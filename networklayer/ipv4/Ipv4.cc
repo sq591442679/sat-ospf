@@ -62,6 +62,8 @@ Ipv4::Ipv4()
 {
     std::string filename = "/home/sqsq/Desktop/"
             "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
+    filename += EXPERIMENT_NAME;
+    filename += "/";
     filename += std::to_string(SQSQ_HOP);
     filename += "/";
     filename += getEnvir()->getConfigEx()->getActiveConfigName();

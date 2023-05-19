@@ -218,7 +218,7 @@ bool DatabaseDescriptionHandler::processDDPacket(const Ospfv2DatabaseDescription
                 /*
                  * @sqsq
                  */
-                if (sqsqCheckSimTime() && REQUEST_HOULD_KNOWN_RANGE) {
+                if (sqsqCheckSimTime() && REQUEST_SHOULD_KNOWN_RANGE) {
                     // @sqsq: only request the LSA which is in current router's "ought-to-know" area
                     // @sqsq： defination of linkStateID is in rfc 2328 table 16
                     Ipv4Address currentRouterID = router->getRouterID();

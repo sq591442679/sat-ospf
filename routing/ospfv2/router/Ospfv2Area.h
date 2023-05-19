@@ -86,11 +86,6 @@ class INET_API Ospfv2Area : public cObject
     unsigned long getSummaryLSACount() const { return summaryLSAs.size(); }
     SummaryLsa *getSummaryLSA(unsigned long i) { return summaryLSAs[i]; }
     const SummaryLsa *getSummaryLSA(unsigned long i) const { return summaryLSAs[i]; }
-    /*
-     * @sqsq
-     */
-//    std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > *getNetworkMap() { return &networkMap; }
-//    std::map<Ipv4Address, std::vector<Ipv4Address> > *getNetworkByRouterID() { return &networkByRouterID; }
 
 
     bool containsAddress(Ipv4Address address) const;
