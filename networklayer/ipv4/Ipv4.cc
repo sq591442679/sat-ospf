@@ -563,6 +563,28 @@ void Ipv4::routeUnicastPacket(Packet *packet)
     EV_INFO << "Routing " << packet << " with destination = " << destAddr << ", ";
 
     bool stub = false;
+    bool ttl0 = false;
+
+    if (ipv4Header->getTimeToLive() <= 0) {
+        ttl0 = true;
+        /*
+         * sqsq
+         */
+        sqsqNumLoop++;
+        ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+        ofs << SQSQ_HOP << ",";
+        ofs << this->getParentModule()->getFullPath() << ",";
+        ofs << simTime() << ",";
+        ofs << 0 << ",";
+        ofs << 0 << ",";
+        ofs << 1;
+        ofs << std::endl;
+        if (PRINT_IVP4_DROP_PACKET) {
+            std::cout << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
+//            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ": "
+//                    << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
+        }
+    }
 
     // if output port was explicitly requested, use that, otherwise use Ipv4 routing
     if (destIE) {
@@ -641,7 +663,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
     }
 
     if (!destIE) { // no route found
-        if (!stub) {
+        if (!stub && !ttl0) {
             // FIXME
             // this part is repeated accidentally????
             if (PRINT_IVP4_DROP_PACKET) {
@@ -662,7 +684,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
             ofs << 0;
             ofs << std::endl;
         }
-        else {
+        else if (!ttl0) {
             if (PRINT_IVP4_DROP_PACKET) {
                 std::cout << "stub, dropping packet" <<
                         this->getParentModule()->getFullPath() << " " << simTime() << endl;
@@ -997,24 +1019,6 @@ void Ipv4::fragmentAndSend(Packet *packet)
         details.setReason(HOP_LIMIT_REACHED);
         emit(packetDroppedSignal, packet, &details);
         EV_WARN << "datagram TTL reached zero, sending ICMP_TIME_EXCEEDED\n";
-
-        /*
-         * sqsq
-         */
-        sqsqNumLoop++;
-        ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-        ofs << SQSQ_HOP << ",";
-        ofs << this->getParentModule()->getFullPath() << ",";
-        ofs << simTime() << ",";
-        ofs << 0 << ",";
-        ofs << 0 << ",";
-        ofs << 1;
-        ofs << std::endl;
-        if (PRINT_IVP4_DROP_PACKET) {
-            std::cout << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
-//            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ": "
-//                    << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
-        }
 
         sendIcmpError(packet, -1 /*TODO*/, ICMP_TIME_EXCEEDED, 0);
         numDropped++;
