@@ -69,6 +69,10 @@ simple PacketQueue extends PacketQueueBase like IPacketQueue
         @signal[packetPulled](type=inet::Packet);
         @signal[packetRemoved](type=inet::Packet);
         @signal[packetDropped](type=inet::Packet);
+        
+        //@sqsq
+        @signal[loadLevel](type=int);
+        
         // the statistical value is the number of packets in the queue
         @statistic[queueLength](title="queue length"; source=warmup(atomic(constant0(packetPushEnded) + count(packetPushStarted) - count(packetPulled) - count(packetRemoved) - count(packetDropped))); record=last,max,timeavg,vector; unit=pk; interpolationmode=sample-hold; autoWarmupFilter=false);
         // the statistical value is the total bit length of all packets in the queue

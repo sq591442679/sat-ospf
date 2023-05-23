@@ -81,6 +81,12 @@ Packet *PacketQueue::getPacket(int index) const
 void PacketQueue::pushPacket(Packet *packet, cGate *gate)
 {
     Enter_Method("pushPacket");
+
+    /*
+     * @sqsq
+     */
+    checkAndEmitQueueLoadLevel(packet);
+
     take(packet);
     cNamedObject packetPushStartedDetails("atomicOperationStarted");
     emit(packetPushStartedSignal, packet, &packetPushStartedDetails);
@@ -108,6 +114,12 @@ Packet *PacketQueue::pullPacket(cGate *gate)
 {
     Enter_Method("pullPacket");
     auto packet = check_and_cast<Packet *>(queue.front());
+
+    /*
+     * @sqsq
+     */
+    checkAndEmitQueueLoadLevel(packet);
+
     EV_INFO << "Pulling packet" << EV_FIELD(packet) << EV_ENDL;
     if (buffer != nullptr) {
         queue.remove(packet);
@@ -185,6 +197,41 @@ void PacketQueue::handlePacketRemoved(Packet *packet)
         emit(packetRemovedSignal, packet);
         updateDisplayString();
     }
+}
+
+/*
+ * @sqsq
+ */
+void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
+{
+    int queueLoadLevel;
+    double occupiedRatio = ((double)getNumPackets()) / packetCapacity;
+    if (occupiedRatio < 0.2) {
+        queueLoadLevel = 1;
+    }
+    else if (occupiedRatio < 0.4) {
+        queueLoadLevel = 2;
+    }
+    else if (occupiedRatio < 0.6) {
+        queueLoadLevel = 3;
+    }
+    else if (occupiedRatio < 0.8) {
+        queueLoadLevel = 4;
+    }
+    else {
+        queueLoadLevel = 5;
+    }
+
+
+    if (currentQueueLoadLevel != queueLoadLevel) {
+        std::cout << "at " << simTime() << " " << this->getParentModule() << std::endl;
+        std::cout << getNumPackets() << " " << packetCapacity << std::endl;
+        std::cout << "----------------------------------------\n";
+        currentQueueLoadLevel = queueLoadLevel;
+        QueueLoadLevelDetails details(this->getParentModule(), queueLoadLevel);
+        emit(queueLoadLevelSignal, this->getParentModule(), &details);
+    }
+
 }
 
 } // namespace queueing

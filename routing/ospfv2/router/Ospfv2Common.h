@@ -46,7 +46,7 @@ namespace ospfv2 {
  */
 #define SQSQ_CONVERGENCY_TIME                  20.0
 #define SQSQ_HOP                               2
-#define EXPERIMENT_NAME                        "withDD-withoutLoopPrevention"
+#define EXPERIMENT_NAME                        "withoutDD-withoutLoopPrevention"
 
 #define SQSQ_M                                 6    // num of orbits
 #define SQSQ_N                                 11   // num of satellites in one orbit
@@ -57,7 +57,7 @@ namespace ospfv2 {
 #define LOOP_AVOIDANCE                         false
 #define HOP_LOOP_PARAMETER                     10
 
-#define REQUEST_SHOULD_KNOWN_RANGE              true
+#define REQUEST_SHOULD_KNOWN_RANGE             false
 #define LSR_RANGE                              SQSQ_HOP
 
 const std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > routerIDsByNetwork = {

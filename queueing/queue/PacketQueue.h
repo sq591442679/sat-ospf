@@ -18,6 +18,32 @@
 namespace inet {
 namespace queueing {
 
+/*
+ * @sqsq
+ */
+class INET_API QueueLoadLevelDetails : public cObject
+{
+private:
+    cObject *queuePtr;
+    int queueLoadLevel;
+
+public:
+    QueueLoadLevelDetails(cObject *obj, int level):
+        queuePtr(obj),
+        queueLoadLevel(level)
+    {
+
+    }
+    cObject *getQueueptr()
+    {
+        return queuePtr;
+    }
+    int getQueueLoadLevel()
+    {
+        return queueLoadLevel;
+    }
+};
+
 class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICallback
 {
   protected:
@@ -32,6 +58,11 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
 
     IPacketDropperFunction *packetDropperFunction = nullptr;
     IPacketComparatorFunction *packetComparatorFunction = nullptr;
+
+    /*
+     * @sqsq
+     */
+    int currentQueueLoadLevel = 1;
 
   protected:
     virtual void initialize(int stage) override;
@@ -66,6 +97,11 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
     virtual Packet *pullPacket(cGate *gate) override;
 
     virtual void handlePacketRemoved(Packet *packet) override;
+
+    /*
+     * @sqsq
+     */
+    virtual void checkAndEmitQueueLoadLevel(Packet *packet);
 };
 
 } // namespace queueing

@@ -36,6 +36,7 @@ class INET_API MessageHandler : public IMessageHandler
     std::map<OspfPacketType, int> controlPacketCount;
     std::map<OspfPacketType, int> controlPacketSize;
     Router *containingRouter;
+    cIListener * listener;
 
   public:
     MessageHandler(Router *containingRouter, cSimpleModule *containingModule);

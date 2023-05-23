@@ -138,7 +138,12 @@ islDistanceMeasureSignal,
 linkChangeToGenSignal,
 enterPolarAreaSignal,
 leavePolarAreaSignal,
-checkSatToGroundSignal;
+checkSatToGroundSignal,
+
+/*
+ * @sqsq
+ */
+queueLoadLevelSignal;
 
 
 /**

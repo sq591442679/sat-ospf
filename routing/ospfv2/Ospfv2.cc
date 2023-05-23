@@ -20,6 +20,12 @@
 #include "inet/routing/ospfv2/Ospfv2ConfigReader.h"
 #include "inet/routing/ospfv2/messagehandler/MessageHandler.h"
 
+/*
+ * @sqsq
+ */
+#include "inet/queueing/queue/PacketQueue.h"
+#include "inet/routing/ospfv2/router/Ospfv2Common.h"
+
 namespace inet {
 namespace ospfv2 {
 
@@ -79,6 +85,7 @@ void Ospfv2::subscribe()
     host->subscribe(interfaceCreatedSignal, this);
     host->subscribe(interfaceDeletedSignal, this);
     host->subscribe(interfaceStateChangedSignal, this);
+    host->subscribe(queueLoadLevelSignal, this);
 }
 
 void Ospfv2::unsubscribe()
@@ -86,6 +93,7 @@ void Ospfv2::unsubscribe()
     host->unsubscribe(interfaceCreatedSignal, this);
     host->unsubscribe(interfaceDeletedSignal, this);
     host->unsubscribe(interfaceStateChangedSignal, this);
+    host->unsubscribe(queueLoadLevelSignal, this);
 }
 
 /**
@@ -144,6 +152,78 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
             }
         }
     }
+
+    /*
+     * @sqsq
+     */
+    else if (signalID == queueLoadLevelSignal && sqsqCheckSimTime()) {
+        // 1. 找到发出该信号的NetworkInterface对应的Ospfv2Interface
+        // 2. 修改该Ospfv2Interface的cost
+        // 3. 根据新的cost生成router LSA
+        ie = check_and_cast<const NetworkInterface *>(obj);
+
+        std::cout << "interface sends signal: " << ie << std::endl;
+
+        int queueLoadLevel = check_and_cast<inet::queueing::QueueLoadLevelDetails *>(details)->getQueueLoadLevel();
+        Ospfv2Interface *foundIntf = nullptr;
+        for (auto& areaId : ospfRouter->getAreaIds()) {
+            Ospfv2Area *area = ospfRouter->getAreaByID(areaId);
+            if (area) {
+                for (auto& ifIndex : area->getInterfaceIndices()) {
+                    Ospfv2Interface *intf = area->getInterface(ifIndex);
+                    if (intf && intf->getIfIndex() == ie->getInterfaceId()) {
+                        foundIntf = intf;
+                        break;
+                    }
+                }
+                if (foundIntf) {
+                    if (queueLoadLevel <= 1) {
+                        foundIntf->setOutputCost(134);
+                    }
+                    else {
+                        foundIntf->setOutputCost(queueLoadLevel * 500);
+                    }
+
+                    std::cout << "at " << simTime() << std::endl;
+                    std::cout << "corresponding ospfv2inerface: " << foundIntf->getAddressRange().address << std::endl;
+                    std::cout << "-----------------------------------------------------------------------------\n";
+
+                    bool shouldRebuildRoutingTable = false;
+                    RouterLsa *routerLSA = foundIntf->getArea()->findRouterLSA(foundIntf->getArea()->getRouter()->getRouterID());
+                    if (routerLSA != nullptr) {
+                        long sequenceNumber = routerLSA->getHeader().getLsSequenceNumber();
+                        if (sequenceNumber == MAX_SEQUENCE_NUMBER) {
+                            routerLSA->getHeaderForUpdate().setLsAge(MAX_AGE);
+                            foundIntf->getArea()->floodLSA(routerLSA);
+                            routerLSA->incrementInstallTime();
+                        }
+                        else {
+                            RouterLsa *newLSA = foundIntf->getArea()->originateRouterLSA();
+
+                            newLSA->getHeaderForUpdate().setLsSequenceNumber(sequenceNumber + 1);
+                            shouldRebuildRoutingTable |= routerLSA->update(newLSA);
+                            delete newLSA;
+
+                            foundIntf->getArea()->floodLSA(routerLSA);
+                        }
+                    }
+                    else { // (lsa == nullptr) -> This must be the first time any interface is up...
+                        RouterLsa *newLSA = foundIntf->getArea()->originateRouterLSA();
+
+                        shouldRebuildRoutingTable |= foundIntf->getArea()->installRouterLSA(newLSA);
+
+                        routerLSA = foundIntf->getArea()->findRouterLSA(foundIntf->getArea()->getRouter()->getRouterID());
+
+                        foundIntf->getArea()->setSPFTreeRoot(routerLSA);
+                        foundIntf->getArea()->floodLSA(newLSA);
+                        delete newLSA;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     else
         throw cRuntimeError("Unexpected signal: %s", getSignalName(signalID));
 }
