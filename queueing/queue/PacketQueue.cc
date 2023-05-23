@@ -14,10 +14,24 @@
 #include "inet/queueing/function/PacketComparatorFunction.h"
 #include "inet/queueing/function/PacketDropperFunction.h"
 
+/*
+ * @sqsq
+ */
+#include "inet/routing/ospfv2/router/Ospfv2Common.h"
+
 namespace inet {
 namespace queueing {
 
 Define_Module(PacketQueue);
+
+/*
+ * @sqsq
+ */
+PacketQueue::~PacketQueue()
+{
+    delete packetDropperFunction;
+    ofs.close();
+}
 
 void PacketQueue::initialize(int stage)
 {
@@ -42,6 +56,19 @@ void PacketQueue::initialize(int stage)
     }
     else if (stage == INITSTAGE_LAST)
         updateDisplayString();
+
+    /*
+     * @sqsq
+     */
+    std::string filename = "/home/sqsq/Desktop/"
+            "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
+    filename += EXPERIMENT_NAME;
+    filename += "/";
+    filename += std::to_string(SQSQ_HOP);
+    filename += "/";
+    filename += getEnvir()->getConfigEx()->getActiveConfigName();
+    filename += "/dropPacketRaw.csv";
+    ofs.open(filename, std::ios::app);
 }
 
 IPacketDropperFunction *PacketQueue::createDropperFunction(const char *dropperClass) const
@@ -97,6 +124,20 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
     else if (packetDropperFunction != nullptr) {
         while (isOverloaded()) {
             auto packet = packetDropperFunction->selectPacket(this);
+
+            /*
+             * @sqsq
+             */
+            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+            ofs << SQSQ_HOP << ",";
+            ofs << this->getParentModule()->getFullPath() << ",";
+            ofs << simTime() << ",";
+            ofs << 0 << ",";
+            ofs << 0 << ",";
+            ofs << 0 << ",";
+            ofs << 1;
+            ofs << std::endl;
+
             EV_INFO << "Dropping packet" << EV_FIELD(packet) << EV_ENDL;
             queue.remove(packet);
             dropPacket(packet, QUEUE_OVERFLOW);

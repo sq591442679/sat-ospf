@@ -998,7 +998,7 @@ unsigned int TcpOptionDescriptor::getFieldTypeFlags(int field) const
         field -= base->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        0,    // FIELD_kind
+        FD_ISEDITABLE,    // FIELD_kind
         FD_ISEDITABLE,    // FIELD_length
     };
     return (field >= 0 && field < 2) ? fieldTypeFlags[field] : 0;
@@ -1148,6 +1148,7 @@ void TcpOptionDescriptor::setFieldValueAsString(omnetpp::any_ptr object, int fie
     }
     TcpOption *pp = omnetpp::fromAnyPtr<TcpOption>(object); (void)pp;
     switch (field) {
+        case FIELD_kind: pp->setKind((inet::tcp::TcpOptionNumbers)string2enum(value, "inet::tcp::TcpOptionNumbers")); break;
         case FIELD_length: pp->setLength(string2ulong(value)); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'TcpOption'", field);
     }
@@ -1181,6 +1182,7 @@ void TcpOptionDescriptor::setFieldValue(omnetpp::any_ptr object, int field, int 
     }
     TcpOption *pp = omnetpp::fromAnyPtr<TcpOption>(object); (void)pp;
     switch (field) {
+        case FIELD_kind: pp->setKind(static_cast<inet::tcp::TcpOptionNumbers>(value.intValue())); break;
         case FIELD_length: pp->setLength(omnetpp::checked_int_cast<unsigned short>(value.intValue())); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'TcpOption'", field);
     }

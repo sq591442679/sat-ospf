@@ -290,7 +290,7 @@ unsigned int AodvControlPacketDescriptor::getFieldTypeFlags(int field) const
         field -= base->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        0,    // FIELD_packetType
+        FD_ISEDITABLE,    // FIELD_packetType
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -435,6 +435,7 @@ void AodvControlPacketDescriptor::setFieldValueAsString(omnetpp::any_ptr object,
     }
     AodvControlPacket *pp = omnetpp::fromAnyPtr<AodvControlPacket>(object); (void)pp;
     switch (field) {
+        case FIELD_packetType: pp->setPacketType((inet::aodv::AodvControlPacketType)string2enum(value, "inet::aodv::AodvControlPacketType")); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'AodvControlPacket'", field);
     }
 }
@@ -466,6 +467,7 @@ void AodvControlPacketDescriptor::setFieldValue(omnetpp::any_ptr object, int fie
     }
     AodvControlPacket *pp = omnetpp::fromAnyPtr<AodvControlPacket>(object); (void)pp;
     switch (field) {
+        case FIELD_packetType: pp->setPacketType(static_cast<inet::aodv::AodvControlPacketType>(value.intValue())); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'AodvControlPacket'", field);
     }
 }

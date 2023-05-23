@@ -579,7 +579,8 @@ void Ipv4::routeUnicastPacket(Packet *packet)
         ofs << simTime() << ",";
         ofs << 0 << ",";
         ofs << 0 << ",";
-        ofs << 1;
+        ofs << 1 << ",";
+        ofs << 0;
         ofs << std::endl;
         if (PRINT_IVP4_DROP_PACKET) {
             std::cout << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
@@ -683,6 +684,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
             ofs << simTime() << ",";
             ofs << 1 << ",";
             ofs << 0 << ",";
+            ofs << 0 << ",";
             ofs << 0;
             ofs << std::endl;
         }
@@ -701,6 +703,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
             ofs << simTime() << ",";
             ofs << 0 << ",";
             ofs << 1 << ",";
+            ofs << 0 << ",";
             ofs << 0;
             ofs << std::endl;
         }

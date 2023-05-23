@@ -15,6 +15,11 @@
 #include "inet/queueing/contract/IPacketComparatorFunction.h"
 #include "inet/queueing/contract/IPacketDropperFunction.h"
 
+/*
+ * @sqsq
+ */
+#include <fstream>
+
 namespace inet {
 namespace queueing {
 
@@ -63,6 +68,7 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
      * @sqsq
      */
     int currentQueueLoadLevel = 1;
+    std::ofstream ofs;
 
   protected:
     virtual void initialize(int stage) override;
@@ -73,7 +79,7 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
     virtual bool isOverloaded() const;
 
   public:
-    virtual ~PacketQueue() { delete packetDropperFunction; }
+    virtual ~PacketQueue(); /*{ delete packetDropperFunction; }*/
 
     virtual int getMaxNumPackets() const override { return packetCapacity; }
     virtual int getNumPackets() const override;

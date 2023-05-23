@@ -156,7 +156,7 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
     /*
      * @sqsq
      */
-    else if (signalID == queueLoadLevelSignal && sqsqCheckSimTime()) {
+    else if (signalID == queueLoadLevelSignal && sqsqCheckSimTime() && LOAD_BALANCE) {
         // 1. 找到发出该信号的NetworkInterface对应的Ospfv2Interface
         // 2. 修改该Ospfv2Interface的cost
         // 3. 根据新的cost生成router LSA
