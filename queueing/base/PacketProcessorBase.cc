@@ -394,6 +394,11 @@ void PacketProcessorBase::dropPacket(Packet *packet, PacketDropReason reason, in
     details.setLimit(limit);
     emit(packetDroppedSignal, packet, &details);
     delete packet;
+
+    /*
+     * @sqsq
+     */
+//    std::cout << "at: " << simTime() << " " << this->getParentModule() << "drop packet due to" << reason << std::endl;
 }
 
 void PacketProcessorBase::updateDisplayString() const

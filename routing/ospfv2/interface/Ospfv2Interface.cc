@@ -354,9 +354,12 @@ bool Ospfv2Interface::floodLsa(const Ospfv2Lsa *lsa, int current_ttl /* = -1 */,
      * the input current_ttl may = -1
      * the action that add a certain LSA to retransmission list is done in this method
      */
-    int next_ttl = (current_ttl == -1 ? SQSQ_HOP : current_ttl - 1);
+    int next_ttl;
     if (!sqsqCheckSimTime()) {
         next_ttl = 1;
+    }
+    else {
+        next_ttl = (current_ttl == -1 ? SQSQ_HOP : current_ttl - 1);
     }
 
     bool floodedBackOut = false;

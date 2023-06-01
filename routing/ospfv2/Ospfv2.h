@@ -32,6 +32,11 @@ class INET_API Ospfv2 : public RoutingProtocolBase, protected cListener
     Router *ospfRouter = nullptr; // root object of the OSPF data structure
     cMessage *startupTimer = nullptr; // timer for delayed startup
 
+    /*
+     * @sqsq
+     */
+    int dropPacketCnt = 0;
+
   public:
     Ospfv2();
     virtual ~Ospfv2();

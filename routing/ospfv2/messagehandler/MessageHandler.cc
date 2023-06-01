@@ -53,7 +53,9 @@ MessageHandler::~MessageHandler()
             "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
     filename += EXPERIMENT_NAME;
     filename += "/";
-    filename += std::to_string(SQSQ_HOP);
+
+    filename += IS_OSPF ? "OSPF" : std::to_string(SQSQ_HOP);
+
     filename += "/";
     filename += getEnvir()->getConfigEx()->getActiveConfigName();
     filename += "/controlOverhead.csv";

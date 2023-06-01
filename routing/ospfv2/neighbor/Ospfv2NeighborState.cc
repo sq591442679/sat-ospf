@@ -34,9 +34,9 @@ void NeighborState::changeState(Neighbor *neighbor, NeighborState *newState, Nei
         }
     }
 
-    if (newState->getState() == Neighbor::FULL_STATE) {
-        neighbor->getInterface()->getStatePointer()->calculateDesignatedRouter(neighbor->getInterface());
-    }
+//    if (newState->getState() == Neighbor::FULL_STATE) {
+//        neighbor->getInterface()->getStatePointer()->calculateDesignatedRouter(neighbor->getInterface());
+//    }
 }
 
 bool NeighborState::updateLsa(Neighbor *neighbor)

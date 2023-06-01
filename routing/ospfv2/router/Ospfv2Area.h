@@ -47,11 +47,6 @@ class INET_API Ospfv2Area : public cObject
 
     Router *parentRouter;
 
-    /*
-     * @sqsq
-     */
-//    std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > networkMap; // key: ip of a network, value: router id of routers connected to this network
-//    std::map<Ipv4Address, std::vector<Ipv4Address> > networkByRouterID;
 
   public:
     Ospfv2Area(CrcMode crcMode, IInterfaceTable *ift, AreaId id = BACKBONE_AREAID);
@@ -127,6 +122,7 @@ class INET_API Ospfv2Area : public cObject
      * @sqsq
      */
     void sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterLsa *treeRoot, std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);
+    int getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID);
 
     void calculateInterAreaRoutes(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);
     void recheckSummaryLSAs(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);

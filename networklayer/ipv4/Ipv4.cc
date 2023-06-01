@@ -58,17 +58,23 @@ Define_Module(Ipv4);
 // a multicast cimek eseten hianyoznak bizonyos NetFilter hook-ok
 // a local interface-k hasznalata eseten szinten hianyozhatnak bizonyos NetFilter hook-ok
 
+std::ofstream Ipv4::ofs;
+
 Ipv4::Ipv4()
 {
-    std::string filename = "/home/sqsq/Desktop/"
-            "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
-    filename += EXPERIMENT_NAME;
-    filename += "/";
-    filename += std::to_string(SQSQ_HOP);
-    filename += "/";
-    filename += getEnvir()->getConfigEx()->getActiveConfigName();
-    filename += "/dropPacketRaw.csv";
-    ofs.open(filename, std::ios::app);
+    if (!ofs.is_open()) {
+        std::string filename = "/home/sqsq/Desktop/"
+                "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
+        filename += EXPERIMENT_NAME;
+        filename += "/";
+
+        filename += IS_OSPF ? "OSPF" : std::to_string(SQSQ_HOP);
+
+        filename += "/";
+        filename += getEnvir()->getConfigEx()->getActiveConfigName();
+        filename += "/dropPacketRaw.csv";
+        ofs.open(filename, std::ios::app);
+    }
 }
 
 Ipv4::~Ipv4()
@@ -76,18 +82,9 @@ Ipv4::~Ipv4()
     /*
      * @sqsq
      */
-//    ofs << "--------------ont test end-------------------------" << std::endl;
-    ofs.close();
-//    std::string filename = "/home/sqsq/Desktop/sat-ospf/inet/examples/ospfv2/sqsqtest/dropPacket.csv";
-//    ofs.open(filename, std::ios::app);
-//    ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-//    ofs << SQSQ_HOP << ",";
-//    ofs << this->getParentModule()->getFullPath() << ",";
-//    ofs << sqsqNumNoEntry << ",";
-//    ofs << sqsqNumLoop << ",";
-//    ofs << sqsqNumNoEntry + sqsqNumLoop;
-//    ofs << std::endl;
-//    ofs.close();
+    if (ofs.is_open()) {
+        ofs.close();
+    }
 
     for (auto it : socketIdToSocketDescriptor)
         delete it.second;
@@ -572,20 +569,20 @@ void Ipv4::routeUnicastPacket(Packet *packet)
         /*
          * sqsq
          */
-        sqsqNumLoop++;
-        ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-        ofs << SQSQ_HOP << ",";
-        ofs << this->getParentModule()->getFullPath() << ",";
-        ofs << simTime() << ",";
-        ofs << 0 << ",";
-        ofs << 0 << ",";
-        ofs << 1 << ",";
-        ofs << 0;
-        ofs << std::endl;
+        if (ofs.is_open() && RECORD_CSV) {
+            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+            ofs << SQSQ_HOP << ",";
+            ofs << this->getParentModule()->getFullPath() << ",";
+            ofs << simTime() << ",";
+            ofs << 0 << ",";
+            ofs << 0 << ",";
+            ofs << 1 << ",";
+            ofs << 0;
+            ofs << std::endl;
+        }
+
         if (PRINT_IVP4_DROP_PACKET) {
             std::cout << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
-//            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ": "
-//                    << this->getParentModule()->getFullPath() << " " << simTime() << ": ZERO\n";
         }
     }
 
@@ -623,6 +620,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
              */
             if (ospfv2::sqsqCheckSimTime() && LOOP_AVOIDANCE) {
                 std::vector<Ipv4Route *> removedRoutes;
+
                 while (fromIE && fromIE == destIE) {  // when input interface == output interface, we must find the next (worse) entry
                     rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
                     removedRoutes.push_back(re);
@@ -636,28 +634,49 @@ void Ipv4::routeUnicastPacket(Packet *packet)
                         break;
                     }
                 }
-                if (re != nullptr) {
-                    Ipv4Address currentRouterID = ospfv2::routerIDByIPAddress.find(destIE->getIpv4Address())->second;
-                    Ipv4Address srcRouterID = ospfv2::routerIDByIPAddress.find(srcAddr)->second;
-                    int normalHop = ospfv2::sqsqCalculateManhattanDistance(currentRouterID, srcRouterID);
-                    if (ipv4Header->getTimeToLive() < defaultTimeToLive - normalHop - HOP_LOOP_PARAMETER) {
-                        rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
-                        removedRoutes.push_back(re);
-                        re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
-                        if (re != nullptr) {
-                            destIE = re->getInterface();
-                            packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
-                            packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
-                        }
-                    }
-                }
+
+//                if (re != nullptr) {
+//                    Ipv4Address currentRouterID = ospfv2::routerIDByIPAddress.find(destIE->getIpv4Address())->second;
+//                    Ipv4Address srcRouterID = ospfv2::routerIDByIPAddress.find(srcAddr)->second;
+//                    int normalHopCnt = ospfv2::sqsqCalculateManhattanDistance(currentRouterID, srcRouterID);
+//                    int usedHopCnt = defaultTimeToLive - ipv4Header->getTimeToLive();
+//                    if (usedHopCnt - normalHopCnt > normalHopCnt * 4) {
+//                        rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+//                        removedRoutes.push_back(re);
+//                        re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                        if (re != nullptr) {
+//                            destIE = re->getInterface();
+//                            packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+//                            packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//                        }
+//                    }
+//
+//                    while (fromIE && fromIE == destIE) {  // 这是因为又观察到了两点之间循环的现象，这一现象的原因是两个路由器都因为环路避而选择次优的下一跳
+//                        rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+//                        removedRoutes.push_back(re);
+//                        re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                        if (re != nullptr) {
+//                            destIE = re->getInterface();
+//                            packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+//                            packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//                        }
+//                        else {
+//                            break;
+//                        }
+//                    }
+//                }
+
                 if (re == nullptr) {
                     re = memRe;
                     destIE = re->getInterface();
                     packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
                     packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
                     stub = true;
+//                    if (simTime() >= 58.0 && simTime() <= 60.0) {
+//                        std::cout << "at: " << simTime() << " " << this->getParentModule()->getName() << std::endl;
+//                    }
                 }
+
                 for (Ipv4Route *route : removedRoutes) {
                     rt->addRoute(route);
                 }
@@ -672,40 +691,38 @@ void Ipv4::routeUnicastPacket(Packet *packet)
             if (PRINT_IVP4_DROP_PACKET) {
                 std::cout << "unroutable, sending ICMP_DESTINATION_UNREACHABLE, dropping packet" <<
                         this->getParentModule()->getFullPath() << " " << simTime() << endl;
-//                ofs << getEnvir()->getConfigEx()->getActiveConfigName() <<
-//                        ": unroutable, sending ICMP_DESTINATION_UNREACHABLE, dropping packet" <<
-//                        this->getParentModule()->getFullPath() << " " << simTime() << endl;
             }
-            sqsqNumNoEntry++;
+
             numUnroutable++;
-            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-            ofs << SQSQ_HOP << ",";
-            ofs << this->getParentModule()->getFullPath() << ",";
-            ofs << simTime() << ",";
-            ofs << 1 << ",";
-            ofs << 0 << ",";
-            ofs << 0 << ",";
-            ofs << 0;
-            ofs << std::endl;
+
+            if (ofs.is_open() && RECORD_CSV) {
+                ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+                ofs << SQSQ_HOP << ",";
+                ofs << this->getParentModule()->getFullPath() << ",";
+                ofs << simTime() << ",";
+                ofs << 1 << ",";
+                ofs << 0 << ",";
+                ofs << 0 << ",";
+                ofs << 0;
+                ofs << std::endl;
+            }
         }
         else if (!ttl0) {
             if (PRINT_IVP4_DROP_PACKET) {
                 std::cout << "stub, dropping packet" <<
                         this->getParentModule()->getFullPath() << " " << simTime() << endl;
-//                ofs << getEnvir()->getConfigEx()->getActiveConfigName() <<
-//                        ": stub, dropping packet" <<
-//                        this->getParentModule()->getFullPath() << " " << simTime() << endl;
             }
-            sqsqNumStub++;
-            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-            ofs << SQSQ_HOP << ",";
-            ofs << this->getParentModule()->getFullPath() << ",";
-            ofs << simTime() << ",";
-            ofs << 0 << ",";
-            ofs << 1 << ",";
-            ofs << 0 << ",";
-            ofs << 0;
-            ofs << std::endl;
+            if (ofs.is_open() && RECORD_CSV) {
+                ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+                ofs << SQSQ_HOP << ",";
+                ofs << this->getParentModule()->getFullPath() << ",";
+                ofs << simTime() << ",";
+                ofs << 0 << ",";
+                ofs << 1 << ",";
+                ofs << 0 << ",";
+                ofs << 0;
+                ofs << std::endl;
+            }
         }
 
         PacketDropDetails details;
@@ -1561,7 +1578,12 @@ void Ipv4::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj,
 
 void Ipv4::sendIcmpError(Packet *origPacket, int inputInterfaceId, IcmpType type, IcmpCode code)
 {
-    icmp->sendErrorMessage(origPacket, inputInterfaceId, type, code);
+    /*
+     * @sqsq
+     */
+    if (SEND_ICMP) {
+        icmp->sendErrorMessage(origPacket, inputInterfaceId, type, code);
+    }
     delete origPacket;
 }
 

@@ -39,6 +39,11 @@ Ospfv2::~Ospfv2()
 {
     cancelAndDelete(startupTimer);
     delete ospfRouter;
+
+    /*
+     * @sqsq
+     */
+//    std::cout << this->getParentModule()->getFullName() << ": " << dropPacketCnt << std::endl;
 }
 
 void Ospfv2::initialize(int stage)
@@ -85,7 +90,12 @@ void Ospfv2::subscribe()
     host->subscribe(interfaceCreatedSignal, this);
     host->subscribe(interfaceDeletedSignal, this);
     host->subscribe(interfaceStateChangedSignal, this);
+
+    /*
+     * @sqsq
+     */
     host->subscribe(queueLoadLevelSignal, this);
+    host->subscribe(packetDroppedSignal, this);
 }
 
 void Ospfv2::unsubscribe()
@@ -93,7 +103,12 @@ void Ospfv2::unsubscribe()
     host->unsubscribe(interfaceCreatedSignal, this);
     host->unsubscribe(interfaceDeletedSignal, this);
     host->unsubscribe(interfaceStateChangedSignal, this);
+
+    /*
+     * @sqsq
+     */
     host->unsubscribe(queueLoadLevelSignal, this);
+    host->unsubscribe(packetDroppedSignal, this);
 }
 
 /**
@@ -156,15 +171,15 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
     /*
      * @sqsq
      */
-    else if (signalID == queueLoadLevelSignal && sqsqCheckSimTime() && LOAD_BALANCE) {
+    else if (signalID == queueLoadLevelSignal) {
         // 1. 找到发出该信号的NetworkInterface对应的Ospfv2Interface
         // 2. 修改该Ospfv2Interface的cost
         // 3. 根据新的cost生成router LSA
         ie = check_and_cast<const NetworkInterface *>(obj);
 
-        std::cout << "interface sends signal: " << ie << std::endl;
+//        std::cout << "interface sends signal: " << ie << std::endl;
 
-        int queueLoadLevel = check_and_cast<inet::queueing::QueueLoadLevelDetails *>(details)->getQueueLoadLevel();
+        double queueChangedOccupiedRatio = check_and_cast<inet::queueing::QueueLoadChangeDetails *>(details)->getQueueChangedOccupiedRatio();
         Ospfv2Interface *foundIntf = nullptr;
         for (auto& areaId : ospfRouter->getAreaIds()) {
             Ospfv2Area *area = ospfRouter->getAreaByID(areaId);
@@ -176,17 +191,17 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
                         break;
                     }
                 }
-                if (foundIntf) {
-                    if (queueLoadLevel <= 1) {
-                        foundIntf->setOutputCost(134);
+                if (foundIntf && foundIntf->getState() != Ospfv2Interface::DOWN_STATE) {
+                    Metric ospfCost = foundIntf->getOutputCost();
+                    ospfCost += (int)(queueChangedOccupiedRatio * 3000);  //TODO  here needs improvement
+                    if (ospfCost <= 0) {
+                        ospfCost = 1;
                     }
-                    else {
-                        foundIntf->setOutputCost(queueLoadLevel * 500);
-                    }
+                    foundIntf->setOutputCost(ospfCost);
 
-                    std::cout << "at " << simTime() << std::endl;
-                    std::cout << "corresponding ospfv2inerface: " << foundIntf->getAddressRange().address << std::endl;
-                    std::cout << "-----------------------------------------------------------------------------\n";
+//                    std::cout << "at " << simTime() << std::endl;
+//                    std::cout << "corresponding ospfv2inerface: " << foundIntf->getAddressRange().address << "  cost:"  << foundIntf->getOutputCost() << std::endl;
+//                    std::cout << "-----------------------------------------------------------------------------\n";
 
                     bool shouldRebuildRoutingTable = false;
                     RouterLsa *routerLSA = foundIntf->getArea()->findRouterLSA(foundIntf->getArea()->getRouter()->getRouterID());
@@ -222,6 +237,10 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
                 }
             }
         }
+    }
+
+    else if (signalID == packetDroppedSignal) {
+        dropPacketCnt++;
     }
 
     else

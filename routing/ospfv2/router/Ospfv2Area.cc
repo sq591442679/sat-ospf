@@ -1451,13 +1451,7 @@ void Ospfv2Area::sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterL
     /*
      * @sqsq
      */
-//    RouterLsa *root2 = findRouterLSA(Ipv4Address(0, 0, 1, 1));
-//    if (root2 == nullptr) {
-//        std::cout << parentRouter->getRouterID() << ": " << root2 << std::endl;
-//    }
-//    else {
-//        std::cout << parentRouter->getRouterID() << ": " << *root2 << std::endl;
-//    }
+//    std::cout << "calculating: " << treeRoot->getHeader().getLinkStateID() << std::endl;
 
     for (uint32_t i = 0; i < routerLSAs.size(); i++)
         routerLSAs[i]->clearNextHops();
@@ -1665,15 +1659,6 @@ void Ospfv2Area::sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterL
             }
 
             treeVertices.push_back(closestVertex);
-
-            /*
-             * sqsq
-             */
-//            if (sqsqCheckSimTime() && calculateRoot->getHeader().getLinkStateID() == Ipv4Address(0, 0, 3, 4)
-//                    && treeRoot->getHeader().getLinkStateID() == Ipv4Address(0, 0, 3, 5)) {
-//                std::cout << "using " << calculateRoot->getHeader().getLinkStateID() << "'s LSDB, " <<
-//                        "SPT root: " << treeRoot->getHeader().getLinkStateID() << ", path: " << closestVertex->getHeader().getLinkStateID() << endl;
-//            }
 
             for (auto it = candidateVertices.begin(); it != candidateVertices.end(); it++) {
                 if ((*it) == closestVertex) {
@@ -1937,6 +1922,32 @@ void Ospfv2Area::sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterL
 
 /*
  * @sqsq
+ * 计算从from到to的方向
+ */
+int Ospfv2Area::getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID)
+{
+    int fromX = fromRouterID.getDByte(2), fromY = fromRouterID.getDByte(3);
+    int toX = toRouterID.getDByte(2), toY = toRouterID.getDByte(3);
+    // x: 1, ..., SQSQ_N     y: 1, ..., SQSQ_M
+
+    if (fromY == toY && toX == sqsqRescaleN(fromX - 1)) {
+        return 0;
+    }
+    if (fromY == toY && toX == sqsqRescaleN(fromX + 1)) {
+        return 1;
+    }
+    if (fromX == toX && toY == sqsqRescaleM(fromY - 1)) {
+        return 2;
+    }
+    if (fromX == toX && toY == sqsqRescaleM(fromY + 1)) {
+        return 3;
+    }
+
+    throw omnetpp::cRuntimeError("can't calculate direction between non-neighboring satellites");
+}
+
+/*
+ * @sqsq
  */
 void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable)
 {
@@ -1945,8 +1956,8 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
      * router id: (0, 0, intra-orbit id, orbit id)
      * M: orbit number
      */
-//    if (simTime() >= 69.3 && simTime() <= 69.4) {
-//        if (parentRouter->getRouterID() == Ipv4Address(0, 0, 6, 2)) {
+//    if (simTime() >= 25.0 && simTime() <= 27.0) {
+//        if (parentRouter->getRouterID() == Ipv4Address(0, 0, 4, 1)) {
 //            std::cout << simTime() << "： " << parentRouter->getRouterID() << endl;
 //            sqsqPrintLSDB();
 //            std::cout << "--------------------------" << endl;
@@ -1955,24 +1966,78 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
 
     RouterId currentRouterID = parentRouter->getRouterID();
     RouterLsa *currentRouterLsa = findRouterLSA(currentRouterID);
+    if (currentRouterLsa == nullptr) {
+//        std::cout << "nullptr" << std::endl;
+        return;
+    }
 
+    unsigned int linkCount = currentRouterLsa->getLinksArraySize();
+    std::vector<RouterLsa *> neighboringRouterLSAs;
+    std::vector<std::vector<Ospfv2RoutingTableEntry *> >routingTables(5); // routingTables[0]是上方卫星的路由表, 对应的方向编号是0
+    std::vector<int> selectedDirections; // 储存最终真实存在链接的方向 将这些方向上的邻居的路由表加入到本卫星的路由表中
+
+    for (uint32_t i = 0; i < linkCount; i++) {
+        const auto& link = currentRouterLsa->getLinks(i);
+        LinkType linkType = static_cast<LinkType>(link.getType());
+        RouterLsa *joiningRouterLSA;
+
+        if (linkType == POINTTOPOINT_LINK) {
+            joiningRouterLSA = findRouterLSA(link.getLinkID());
+            if (joiningRouterLSA == nullptr) {
+                continue;
+            }
+//            std::cout << currentRouterID << "-->" << link.getLinkID() << "  " << (joiningRouterLSA == nullptr) << std::endl;
+            neighboringRouterLSAs.push_back(joiningRouterLSA);
+            int direction = getDirection(currentRouterID, joiningRouterLSA->getHeader().getLinkStateID());
+//            std::cout << "direction: " << direction << std::endl;
+            selectedDirections.push_back(direction);
+            sqsqCalculateShortestPathTree(currentRouterLsa, joiningRouterLSA, routingTables[direction]);
+
+            for (Ospfv2Interface *gatewayInterface : associatedInterfaces) {
+                if (gatewayInterface->getInterfaceName()[3] - '0' == direction) {
+                    Ipv4Address nextHopAddr;
+                    Ipv4Address gatewayInterfaceIPAddress = gatewayInterface->getAddressRange().address;
+                    if (gatewayInterfaceIPAddress.getDByte(3) == 1) {
+                        nextHopAddr.set(gatewayInterfaceIPAddress.getDByte(0),
+                                gatewayInterfaceIPAddress.getDByte(1),
+                                gatewayInterfaceIPAddress.getDByte(2),
+                                2);
+                    }
+                    else {
+                        nextHopAddr.set(gatewayInterfaceIPAddress.getDByte(0),
+                                gatewayInterfaceIPAddress.getDByte(1),
+                                gatewayInterfaceIPAddress.getDByte(2),
+                                1);
+                    }
+
+                    NextHop nextHop;
+                    nextHop.advertisingRouter = currentRouterID; // is this true?
+                    nextHop.hopAddress = nextHopAddr;
+                    nextHop.ifIndex = gatewayInterface->getIfIndex();
+                    for (Ospfv2RoutingTableEntry *entry : routingTables[direction]) {
+                        entry->clearNextHops();
+                        entry->addNextHop(nextHop);
+
+                        Ipv4Address destRouterID = routerIDByIPAddress.find(entry->getDestination())->second;
+//                        if (simTime() > 25.0 && simTime() < 27.0) {
+//                            std::cout << currentRouterID << " " << destRouterID <<
+//                                    " dis:" << sqsqCalculateManhattanDistance(currentRouterID, destRouterID) << std::endl;
+//                        }
+                        if (sqsqCalculateManhattanDistance(currentRouterID, destRouterID) > 1) {
+                            entry->setCost(entry->getCost() + link.getLinkCost());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /*
     RouterId upID = Ipv4Address(0, 0, sqsqRescaleN(currentRouterID.getDByte(2) - 1), currentRouterID.getDByte(3));
     RouterId downID = Ipv4Address(0, 0, sqsqRescaleN(currentRouterID.getDByte(2) + 1), currentRouterID.getDByte(3));
     RouterId leftID = Ipv4Address(0, 0, currentRouterID.getDByte(2), sqsqRescaleM(currentRouterID.getDByte(3) - 1));
     RouterId rightID = Ipv4Address(0, 0, currentRouterID.getDByte(2), sqsqRescaleM(currentRouterID.getDByte(3) + 1));
     RouterId routerIDs[] = {currentRouterID, upID, downID, leftID, rightID};
-    std::vector<std::vector<Ospfv2RoutingTableEntry *> >routingTables(5); // routingTables[0]是本卫星的路由表, [1]是上方卫星的路由表, 对应的方向编号是0
-    std::vector<int> selectedDirection; // 储存最终真实存在链接的方向 将这些方向上的邻居的路由表加入到本卫星的路由表中
-
-    for (int i = 1; i < 5; i++) {
-        RouterId routerID = routerIDs[i];
-        routingTables[i].clear();
-        RouterLsa *treeRoot = findRouterLSA(routerID);
-        if (treeRoot == nullptr) {
-            continue;
-        }
-        sqsqCalculateShortestPathTree(currentRouterLsa, treeRoot, routingTables[i]);
-    }
 
     unsigned int linkCount = currentRouterLsa->getLinksArraySize();
     for (uint32_t i = 0; i < linkCount; i++) {
@@ -1986,8 +2051,6 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
                 NetworkLsa *joiningNetworkVertex = check_and_cast<NetworkLsa *>(neighboringVertex);
                 Ipv4Address connectingNetworkAddr = joiningNetworkVertex->getHeader().getLinkStateID().doAnd(joiningNetworkVertex->getNetworkMask());
                 unsigned long linkCost = link.getLinkCost();
-
-//                std::cout << simTime() << ":" << currentRouterID << " " << linkCost << endl;
 
                 Ipv4Address interfaceAddr1 = Ipv4Address(connectingNetworkAddr.getDByte(0), connectingNetworkAddr.getDByte(1), connectingNetworkAddr.getDByte(2), 1);
                 Ipv4Address interfaceAddr2 = Ipv4Address(connectingNetworkAddr.getDByte(0), connectingNetworkAddr.getDByte(1), connectingNetworkAddr.getDByte(2), 2);
@@ -2015,41 +2078,34 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
                 }
                 if (!interfaceName.empty()) {
                     int direction = interfaceName[3] - '0';
-                    selectedDirection.push_back(direction);
+                    selectedDirections.push_back(direction);
                     NextHop nextHop;
                     nextHop.advertisingRouter = currentRouterID; // is this true?
                     nextHop.hopAddress = nextHopAddr;
                     nextHop.ifIndex = interfaceIndex;
-                    for (Ospfv2RoutingTableEntry *entry : routingTables[direction + 1]) {
+                    for (Ospfv2RoutingTableEntry *entry : routingTables[direction]) {
                         entry->clearNextHops();
                         entry->addNextHop(nextHop);
-                        entry->setCost(entry->getCost() + linkCost);
+
+                        Ipv4Address destNetworkAddress = entry->getDestination().doAnd(entry->getNetmask());
+                        std::pair<Ipv4Address, Ipv4Address> routersInNetwork = routerIDsByNetwork.find(destNetworkAddress)->second;
+                        if (routersInNetwork.first != parentRouter->getRouterID() && routersInNetwork.second != parentRouter->getRouterID()) {
+                            entry->setCost(entry->getCost() + linkCost);
+                        }
                     }
                 }
             }
         }
     }
+    */
 
-    if (selectedDirection.size() > 0) {
-        std::sort(selectedDirection.begin(), selectedDirection.end());
-        for (Ospfv2RoutingTableEntry *entry : routingTables[selectedDirection[0] + 1]) { // find all entries with the same destination, to make ospf routing table seems more "sorted"
-            std::vector<Ospfv2RoutingTableEntry *> entries; // contains all entries to a certain destination from 4 neighbors
-            entries.clear();
-            entries.push_back(entry);
-            for (int i : selectedDirection) {
-                if (i == selectedDirection[0]) {
-                    continue;
-                }
-                for (Ospfv2RoutingTableEntry *entry2 : routingTables[i + 1]) { //TODO double-for, too time-inefficient
-                    if (entry2->getDestination() == entry->getDestination()) {
-                        entries.push_back(entry2);
-                        break;
-                    }
-                }
+    if (selectedDirections.size() > 0) {
+        std::sort(selectedDirections.begin(), selectedDirections.end());
+        for (int direction : selectedDirections) {
+            for (Ospfv2RoutingTableEntry *entry : routingTables[direction]) {
+                newRoutingTable.push_back(entry);
             }
-            routingTables[0].insert(routingTables[0].end(), entries.begin(), entries.end());
         }
-        newRoutingTable.assign(routingTables[0].begin(), routingTables[0].end());
         std::sort(newRoutingTable.begin(), newRoutingTable.end(),
             [](Ospfv2RoutingTableEntry *entry1, Ospfv2RoutingTableEntry *entry2) {
                 if (entry1->getDestination() == entry2->getDestination()) {
@@ -2064,9 +2120,8 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
 
 
 
-    // if we want to use origin OSPF, then comment "RouterId upID ..." until here, and uncomment the next line
-//    sqsqCalculateShortestPathTree(currentRouterLsa, newRoutingTable);
-
+    // if we want to use origin OSPF, then comment "unsigned int linkCount = currentRouterLsa->getLinksArraySize();...." until here, and uncomment the next line
+//    sqsqCalculateShortestPathTree(currentRouterLsa, currentRouterLsa, newRoutingTable);
 }
 
 /*
@@ -2825,9 +2880,9 @@ void Ospfv2Area::sqsqPrintLSDB()
             const auto& lEntry = entry->getLinks(j);
             LinkType linkType = static_cast<LinkType>(lEntry.getType());
             if (linkType == POINTTOPOINT_LINK) {
-                std::cout << "        Link connected to: another router (point-to-point)" << std::endl;
-                std::cout << "        Neighboring router ID (link ID): " << lEntry.getLinkID() << std::endl;
-                std::cout << "        Router interface address (link data): " << Ipv4Address(lEntry.getLinkData()).str(false) << std::endl;
+                std::cout << "        Link connected to: another router (point-to-point), "
+                        "Neighboring router ID (link ID): " << lEntry.getLinkID() << std::endl;
+//                std::cout << "        Router interface address (link data): " << Ipv4Address(lEntry.getLinkData()).str(false) << std::endl;
                 std::cout << "        Link cost: " << lEntry.getLinkCost() << std::endl;
             }
             else if (linkType == TRANSIT_LINK) {
@@ -2835,8 +2890,10 @@ void Ospfv2Area::sqsqPrintLSDB()
                          << ", link cost: " << lEntry.getLinkCost() << std::endl;
             }
             else if (linkType == STUB_LINK) {
+                /*
                 std::cout << "        Link connected to: a stub network, Network/subnet number (link ID): " << lEntry.getLinkID()
                         << ", Link cost: " << lEntry.getLinkCost() << std::endl;
+                */
             }
             else {
                 std::cout << "        Link connected to: a virtual link" << std::endl;

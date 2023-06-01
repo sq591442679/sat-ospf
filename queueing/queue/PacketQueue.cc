@@ -30,8 +30,16 @@ Define_Module(PacketQueue);
 PacketQueue::~PacketQueue()
 {
     delete packetDropperFunction;
-    ofs.close();
 }
+
+void PacketQueue::finish()
+{
+    if (ofs.is_open()) {
+        ofs.close();
+    }
+}
+
+std::ofstream PacketQueue::ofs;
 
 void PacketQueue::initialize(int stage)
 {
@@ -60,15 +68,20 @@ void PacketQueue::initialize(int stage)
     /*
      * @sqsq
      */
-    std::string filename = "/home/sqsq/Desktop/"
-            "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
-    filename += EXPERIMENT_NAME;
-    filename += "/";
-    filename += std::to_string(SQSQ_HOP);
-    filename += "/";
-    filename += getEnvir()->getConfigEx()->getActiveConfigName();
-    filename += "/dropPacketRaw.csv";
-    ofs.open(filename, std::ios::app);
+    if (!ofs.is_open()) {
+        std::string filename = "/home/sqsq/Desktop/"
+                "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
+        filename += EXPERIMENT_NAME;
+        filename += "/";
+
+        filename += IS_OSPF ? "OSPF" : std::to_string(SQSQ_HOP);
+
+        filename += "/";
+        filename += getEnvir()->getConfigEx()->getActiveConfigName();
+        filename += "/queueDropPacketRaw.csv";
+        ofs.open(filename, std::ios::app | std::ios::out);
+//        std::cout << "filename: " << filename << "  " << ofs.is_open() << endl;
+    }
 }
 
 IPacketDropperFunction *PacketQueue::createDropperFunction(const char *dropperClass) const
@@ -128,15 +141,19 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
             /*
              * @sqsq
              */
-            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-            ofs << SQSQ_HOP << ",";
-            ofs << this->getParentModule()->getFullPath() << ",";
-            ofs << simTime() << ",";
-            ofs << 0 << ",";
-            ofs << 0 << ",";
-            ofs << 0 << ",";
-            ofs << 1;
-            ofs << std::endl;
+//            std::cout << "at: " << simTime() << " " << this->getParentModule()->getFullPath() << " drop packet" << std::endl;
+            if (ofs.is_open() && RECORD_CSV) {
+                ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+                ofs << SQSQ_HOP << ",";
+                ofs << this->getParentModule()->getFullPath() << ",";
+                ofs << simTime() << ",";
+                ofs << 0 << ",";
+                ofs << 0 << ",";
+                ofs << 0 << ",";
+                ofs << 1;
+                ofs << std::endl;
+//                ofs.flush();
+            }
 
             EV_INFO << "Dropping packet" << EV_FIELD(packet) << EV_ENDL;
             queue.remove(packet);
@@ -242,37 +259,26 @@ void PacketQueue::handlePacketRemoved(Packet *packet)
 
 /*
  * @sqsq
+ * when number of packets changes exceed a threshold (i.e. capacity / 5)
+ * emits signal
  */
 void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
 {
-    int queueLoadLevel;
-    double occupiedRatio = ((double)getNumPackets()) / packetCapacity;
-    if (occupiedRatio < 0.2) {
-        queueLoadLevel = 1;
-    }
-    else if (occupiedRatio < 0.4) {
-        queueLoadLevel = 2;
-    }
-    else if (occupiedRatio < 0.6) {
-        queueLoadLevel = 3;
-    }
-    else if (occupiedRatio < 0.8) {
-        queueLoadLevel = 4;
-    }
-    else {
-        queueLoadLevel = 5;
-    }
+    int currentNumPackets = getNumPackets();
 
+    if (ospfv2::sqsqCheckSimTime() && LOAD_BALANCE) {
+        if (std::abs(currentNumPackets - previousNumPackets) >= getMaxNumPackets() / 10) { // TODO needs improvement
+            double queueChangedOccupiedRatio = ((double)(currentNumPackets - previousNumPackets)) / (double)getMaxNumPackets();
+            previousNumPackets = currentNumPackets;
 
-    if (currentQueueLoadLevel != queueLoadLevel) {
-        std::cout << "at " << simTime() << " " << this->getParentModule() << std::endl;
-        std::cout << getNumPackets() << " " << packetCapacity << std::endl;
-        std::cout << "----------------------------------------\n";
-        currentQueueLoadLevel = queueLoadLevel;
-        QueueLoadLevelDetails details(this->getParentModule(), queueLoadLevel);
-        emit(queueLoadLevelSignal, this->getParentModule(), &details);
+//            std::cout << "at " << simTime() << " " << this->getParentModule()->getFullPath() << std::endl;
+//            std::cout << getNumPackets() << " " << packetCapacity << " ratio:" << queueChangedOccupiedRatio << std::endl;
+//            std::cout << "----------------------------------------\n";
+
+            QueueLoadChangeDetails details(this->getParentModule(), queueChangedOccupiedRatio);
+            emit(queueLoadLevelSignal, this->getParentModule(), &details);
+        }
     }
-
 }
 
 } // namespace queueing

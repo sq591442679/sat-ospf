@@ -26,16 +26,16 @@ namespace queueing {
 /*
  * @sqsq
  */
-class INET_API QueueLoadLevelDetails : public cObject
+class INET_API QueueLoadChangeDetails : public cObject
 {
 private:
     cObject *queuePtr;
-    int queueLoadLevel;
+    double queueChangedOccupiedRatio;
 
 public:
-    QueueLoadLevelDetails(cObject *obj, int level):
+    QueueLoadChangeDetails(cObject *obj, double ratio):
         queuePtr(obj),
-        queueLoadLevel(level)
+        queueChangedOccupiedRatio(ratio)
     {
 
     }
@@ -43,9 +43,9 @@ public:
     {
         return queuePtr;
     }
-    int getQueueLoadLevel()
+    double getQueueChangedOccupiedRatio()
     {
-        return queueLoadLevel;
+        return queueChangedOccupiedRatio;
     }
 };
 
@@ -67,8 +67,8 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
     /*
      * @sqsq
      */
-    int currentQueueLoadLevel = 1;
-    std::ofstream ofs;
+    int previousNumPackets = 0;
+    static std::ofstream ofs;
 
   protected:
     virtual void initialize(int stage) override;
@@ -108,6 +108,7 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
      * @sqsq
      */
     virtual void checkAndEmitQueueLoadLevel(Packet *packet);
+    virtual void finish() override;
 };
 
 } // namespace queueing

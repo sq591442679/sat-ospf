@@ -99,10 +99,7 @@ class INET_API Ipv4 : public OperationalBase, public NetfilterBase, public INetw
     /*
      * @sqsq
      */
-    int sqsqNumLoop = 0;
-    int sqsqNumNoEntry = 0;
-    int sqsqNumStub = 0;
-    std::ofstream ofs;
+    static std::ofstream ofs;
 
     // hooks
     typedef std::list<QueuedDatagramForHook> DatagramQueueForHooks;

@@ -49,9 +49,7 @@ class INET_API UdpBasicApp : public ClockUserModuleMixin<ApplicationBase>, publi
      * @sqsq
      */
     simsignal_t eedSignal;
-    simtime_t totalDelay;
-    int packetCount;
-    std::ofstream ofs;
+    static std::ofstream ofs;
 
   protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }

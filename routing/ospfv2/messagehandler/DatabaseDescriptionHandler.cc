@@ -218,34 +218,35 @@ bool DatabaseDescriptionHandler::processDDPacket(const Ospfv2DatabaseDescription
                 /*
                  * @sqsq
                  */
-                if (sqsqCheckSimTime() && REQUEST_SHOULD_KNOWN_RANGE) {
-                    // @sqsq: only request the LSA which is in current router's "ought-to-know" area
-                    // @sqsq： defination of linkStateID is in rfc 2328 table 16
-                    Ipv4Address currentRouterID = router->getRouterID();
-                    Ipv4Address linkStateID = currentHeader.getLinkStateID();
-                    int dis = 0x3f3f3f3f;
-                    if (currentHeader.getLsType() == ROUTERLSA_TYPE) {
-                        dis = sqsqCalculateManhattanDistance(currentRouterID, linkStateID);
-                        if (dis <= LSR_RANGE) {
-                            neighbor->addToRequestList(&currentHeader);
-//                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
+                if (sqsqCheckSimTime()) {
+                    if (REQUEST_SHOULD_KNOWN_RANGE) {
+                        // @sqsq: only request the LSA which is in current router's "ought-to-know" area
+                        // @sqsq： defination of linkStateID is in rfc 2328 table 16
+                        Ipv4Address currentRouterID = router->getRouterID();
+                        Ipv4Address linkStateID = currentHeader.getLinkStateID();
+                        int dis = 0x3f3f3f3f;
+                        if (currentHeader.getLsType() == ROUTERLSA_TYPE) {
+                            dis = sqsqCalculateManhattanDistance(currentRouterID, linkStateID);
+                            if (dis <= LSR_RANGE) {
+                                neighbor->addToRequestList(&currentHeader);
+    //                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
+                            }
                         }
-                    }
-                    else if (currentHeader.getLsType() == NETWORKLSA_TYPE) {
-                        Ipv4Address networkAddress;
-                        networkAddress.set(linkStateID.getDByte(0), linkStateID.getDByte(1), linkStateID.getDByte(2), 0);
-//                        std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > *networkMap = router->getAreaByID(Ipv4Address(0, 0, 0, 0))->getNetworkMap();
-                        Ipv4Address end1 = routerIDsByNetwork.find(networkAddress)->second.first;
-                        Ipv4Address end2 = routerIDsByNetwork.find(networkAddress)->second.second; // 2 router ids that link to this network
-                        int dis1 = sqsqCalculateManhattanDistance(currentRouterID, end1);
-                        int dis2 = sqsqCalculateManhattanDistance(currentRouterID, end2);
-                        dis = std::min(dis1, dis2);
-                        if (dis <= LSR_RANGE) {
-                            neighbor->addToRequestList(&currentHeader);
-//                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
+                        else if (currentHeader.getLsType() == NETWORKLSA_TYPE) {
+                            Ipv4Address networkAddress;
+                            networkAddress.set(linkStateID.getDByte(0), linkStateID.getDByte(1), linkStateID.getDByte(2), 0);
+                            Ipv4Address end1 = routerIDsByNetwork.find(networkAddress)->second.first;
+                            Ipv4Address end2 = routerIDsByNetwork.find(networkAddress)->second.second; // 2 router ids that link to this network
+                            int dis1 = sqsqCalculateManhattanDistance(currentRouterID, end1);
+                            int dis2 = sqsqCalculateManhattanDistance(currentRouterID, end2);
+                            dis = std::min(dis1, dis2);
+                            if (dis <= LSR_RANGE) {
+                                neighbor->addToRequestList(&currentHeader);
+    //                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
+                            }
                         }
+    //                    std::cout << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
                     }
-//                    std::cout << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
                 }
                 else {
                     neighbor->addToRequestList(&currentHeader);

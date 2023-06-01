@@ -28,6 +28,8 @@ UdpBasicApp::~UdpBasicApp()
     cancelAndDelete(selfMsg);
 }
 
+std::ofstream UdpBasicApp::ofs;
+
 void UdpBasicApp::initialize(int stage)
 {
     ClockUserModuleMixin::initialize(stage);
@@ -49,17 +51,20 @@ void UdpBasicApp::initialize(int stage)
          * @sqsq
          */
         eedSignal = registerSignal("eed");
-        std::string filename = "/home/sqsq/Desktop/"
-                "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
-        filename += EXPERIMENT_NAME;
-        filename += "/";
-        filename += std::to_string(SQSQ_HOP);
-        filename += "/";
-        filename += getEnvir()->getConfigEx()->getActiveConfigName();
-        filename += "/successPacketRaw.csv";
-        ofs.open(filename, std::ios::app);
-        totalDelay = 0.0;
-        packetCount = 0;
+
+        if (!ofs.is_open()) {
+            std::string filename = "/home/sqsq/Desktop/"
+                    "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
+            filename += EXPERIMENT_NAME;
+            filename += "/";
+
+            filename += IS_OSPF ? "OSPF" : std::to_string(SQSQ_HOP);
+
+            filename += "/";
+            filename += getEnvir()->getConfigEx()->getActiveConfigName();
+            filename += "/successPacketRaw.csv";
+            ofs.open(filename, std::ios::app);
+        }
 
         if (stopTime >= CLOCKTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
@@ -75,18 +80,10 @@ void UdpBasicApp::finish()
     /*
      * @sqsq
      */
-//    ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-//    ofs << SQSQ_HOP << ",";
-//    ofs << this->getParentModule()->getFullPath() << ",";
-//    ofs << packetCount << ",";
-//    if (packetCount > 0) {
-//        ofs << totalDelay / packetCount;
-//    }
-//    else {
-//        ofs << 0;
-//    }
-//    ofs << std::endl;
-    ofs.close();
+
+    if (ofs.is_open()) {
+        ofs.close();
+    }
 
     ApplicationBase::finish();
 }
@@ -233,15 +230,15 @@ void UdpBasicApp::handleMessageWhenUp(cMessage *msg)
         simtime_t eed = simTime() - creationTime;
 //        std::cout << "at " << simTime() << ", " << getFullName() << " eed: " << eed << std::endl;
         emit(eedSignal, eed);
-        totalDelay += eed;
-        packetCount++;
 
-        ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
-        ofs << SQSQ_HOP << ",";
-        ofs << this->getParentModule()->getFullPath() << ",";
-        ofs << simTime() << ",";
-        ofs << eed;
-        ofs << std::endl;
+        if (ofs.is_open() && RECORD_CSV) {
+            ofs << getEnvir()->getConfigEx()->getActiveConfigName() << ",";
+            ofs << SQSQ_HOP << ",";
+            ofs << this->getParentModule()->getFullPath() << ",";
+            ofs << simTime() << ",";
+            ofs << eed;
+            ofs << std::endl;
+        }
 
         socket.processMessage(msg);
     }
