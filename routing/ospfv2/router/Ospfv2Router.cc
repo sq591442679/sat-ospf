@@ -702,6 +702,7 @@ void Router::rebuildRoutingTable()
     // backup the routing table
     std::vector<Ospfv2RoutingTableEntry *> oldTable;
     oldTable.assign(ospfRoutingTable.begin(), ospfRoutingTable.end());
+
     ospfRoutingTable.clear();
     ospfRoutingTable.assign(newTable.begin(), newTable.end());
 
@@ -767,15 +768,10 @@ void Router::rebuildRoutingTable()
     EV_INFO << "<-- Routing table was rebuilt.\n"
             << "Results:\n";
 
-//    for (auto& entry : ospfRoutingTable)
-//        EV_INFO << entry << "\n";
-
     notifyAboutRoutingTableChanges(oldTable);
 
     for (auto& entry : oldTable)
         delete entry;
-    simtime_t t2 = simTime();
-//    std::cout << routerID << ": " << t2 << " "<< t1 << std::endl;
 }
 
 bool Router::deleteRoute(Ospfv2RoutingTableEntry *entry)

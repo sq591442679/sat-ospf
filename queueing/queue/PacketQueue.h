@@ -30,12 +30,12 @@ class INET_API QueueLoadChangeDetails : public cObject
 {
 private:
     cObject *queuePtr;
-    double queueChangedOccupiedRatio;
+    double queueOccupiedRatio;
 
 public:
     QueueLoadChangeDetails(cObject *obj, double ratio):
         queuePtr(obj),
-        queueChangedOccupiedRatio(ratio)
+        queueOccupiedRatio(ratio)
     {
 
     }
@@ -43,9 +43,9 @@ public:
     {
         return queuePtr;
     }
-    double getQueueChangedOccupiedRatio()
+    double getQueueOccupiedRatio()
     {
-        return queueChangedOccupiedRatio;
+        return queueOccupiedRatio;
     }
 };
 

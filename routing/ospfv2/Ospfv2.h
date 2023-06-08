@@ -55,6 +55,11 @@ class INET_API Ospfv2 : public RoutingProtocolBase, protected cListener
      */
     int checkExternalRoute(const Ipv4Address& route);
 
+    /*
+     * @sqsq
+     */
+    Router *getOspfRouter() { return ospfRouter; }
+
   protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
     virtual void initialize(int stage) override;

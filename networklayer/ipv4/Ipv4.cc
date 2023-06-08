@@ -635,12 +635,24 @@ void Ipv4::routeUnicastPacket(Packet *packet)
                     }
                 }
 
-//                if (re != nullptr) {
+//                if (fromIE && fromIE == destIE) {  // when input interface == output interface, we must find the next (worse) entry
+//                    rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+//                    removedRoutes.push_back(re);
+//                    re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                    if (re != nullptr) {
+//                        destIE = re->getInterface();
+//                        packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+//                        packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//                    }
+//                }
+//
+//                else {
 //                    Ipv4Address currentRouterID = ospfv2::routerIDByIPAddress.find(destIE->getIpv4Address())->second;
 //                    Ipv4Address srcRouterID = ospfv2::routerIDByIPAddress.find(srcAddr)->second;
 //                    int normalHopCnt = ospfv2::sqsqCalculateManhattanDistance(currentRouterID, srcRouterID);
 //                    int usedHopCnt = defaultTimeToLive - ipv4Header->getTimeToLive();
-//                    if (usedHopCnt - normalHopCnt > normalHopCnt * 4) {
+//
+//                    if (usedHopCnt - normalHopCnt > HOP_LOOP_PARAMETER) {  // 环路出现
 //                        rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
 //                        removedRoutes.push_back(re);
 //                        re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
@@ -648,20 +660,35 @@ void Ipv4::routeUnicastPacket(Packet *packet)
 //                            destIE = re->getInterface();
 //                            packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
 //                            packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//
+//                            while (fromIE && fromIE == destIE) {  // 这是因为又观察到了两点之间循环的现象，这一现象的原因是两个路由器都因为环路避而选择次优的下一跳
+//                                rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+//                                removedRoutes.push_back(re);
+//                                re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                                if (re != nullptr) {
+//                                    destIE = re->getInterface();
+//                                    packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+//                                    packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//                                }
+//                                else {
+//                                    break;
+//                                }
+//                            }
 //                        }
 //                    }
-//
-//                    while (fromIE && fromIE == destIE) {  // 这是因为又观察到了两点之间循环的现象，这一现象的原因是两个路由器都因为环路避而选择次优的下一跳
-//                        rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
-//                        removedRoutes.push_back(re);
-//                        re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
-//                        if (re != nullptr) {
-//                            destIE = re->getInterface();
-//                            packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
-//                            packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
-//                        }
-//                        else {
-//                            break;
+//                    else {
+//                        while (fromIE && fromIE == destIE) {  // 这是因为又观察到了两点之间循环的现象，这一现象的原因是两个路由器都因为环路避而选择次优的下一跳
+//                            rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+//                            removedRoutes.push_back(re);
+//                            re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                            if (re != nullptr) {
+//                                destIE = re->getInterface();
+//                                packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+//                                packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+//                            }
+//                            else {
+//                                break;
+//                            }
 //                        }
 //                    }
 //                }
@@ -672,9 +699,6 @@ void Ipv4::routeUnicastPacket(Packet *packet)
                     packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
                     packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
                     stub = true;
-//                    if (simTime() >= 58.0 && simTime() <= 60.0) {
-//                        std::cout << "at: " << simTime() << " " << this->getParentModule()->getName() << std::endl;
-//                    }
                 }
 
                 for (Ipv4Route *route : removedRoutes) {

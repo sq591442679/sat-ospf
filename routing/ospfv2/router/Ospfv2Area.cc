@@ -2018,12 +2018,14 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
                         entry->clearNextHops();
                         entry->addNextHop(nextHop);
 
-                        Ipv4Address destRouterID = routerIDByIPAddress.find(entry->getDestination())->second;
-//                        if (simTime() > 25.0 && simTime() < 27.0) {
-//                            std::cout << currentRouterID << " " << destRouterID <<
-//                                    " dis:" << sqsqCalculateManhattanDistance(currentRouterID, destRouterID) << std::endl;
+//                        Ipv4Address destRouterID = routerIDByIPAddress.find(entry->getDestination())->second;
+//                        if (sqsqCalculateManhattanDistance(currentRouterID, destRouterID) > 1) {
+//                            entry->setCost(entry->getCost() + link.getLinkCost());
 //                        }
-                        if (sqsqCalculateManhattanDistance(currentRouterID, destRouterID) > 1) {
+                        if (entry->getDestination() == nextHopAddr || entry->getDestination() == gatewayInterfaceIPAddress) {
+                            entry->setCost(link.getLinkCost());
+                        }
+                        else {
                             entry->setCost(entry->getCost() + link.getLinkCost());
                         }
                     }

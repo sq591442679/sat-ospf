@@ -86,7 +86,7 @@ simple Ipv4 like IIpv4
         string arpModule;
         string icmpModule;
         string crcMode @enum("declared", "computed") = default("declared");
-        int timeToLive = default(255); // @sqsq default(32);
+        int timeToLive = default(32); // @sqsq default(32);
         int multicastTimeToLive = default(32);
         double fragmentTimeout @unit(s) = default(60s);
         bool limitedBroadcast = default(false); // send out limited broadcast packets comming from higher layer

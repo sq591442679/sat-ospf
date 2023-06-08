@@ -25,6 +25,7 @@
  */
 #include "inet/queueing/queue/PacketQueue.h"
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
+#include <cmath>
 
 namespace inet {
 namespace ospfv2 {
@@ -177,9 +178,18 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
         // 3. 根据新的cost生成router LSA
         ie = check_and_cast<const NetworkInterface *>(obj);
 
+        std::string interfaceName = ie->getInterfaceName();
+        int direction = interfaceName[interfaceName.length() - 1] - '0';
+        double propagationDelay = 0.0;
+        if (direction == 0 || direction == 1) {
+            propagationDelay = ospfv2::propagationDelayByID.find(0)->second;
+        }
+        else {
+            propagationDelay = ospfv2::propagationDelayByID.find(ospfRouter->getRouterID().getDByte(2))->second;
+        }
 //        std::cout << "interface sends signal: " << ie << std::endl;
 
-        double queueChangedOccupiedRatio = check_and_cast<inet::queueing::QueueLoadChangeDetails *>(details)->getQueueChangedOccupiedRatio();
+        double queueOccupiedRatio = check_and_cast<inet::queueing::QueueLoadChangeDetails *>(details)->getQueueOccupiedRatio();
         Ospfv2Interface *foundIntf = nullptr;
         for (auto& areaId : ospfRouter->getAreaIds()) {
             Ospfv2Area *area = ospfRouter->getAreaByID(areaId);
@@ -193,7 +203,16 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
                 }
                 if (foundIntf && foundIntf->getState() != Ospfv2Interface::DOWN_STATE) {
                     Metric ospfCost = foundIntf->getOutputCost();
-                    ospfCost += (int)(queueChangedOccupiedRatio * 3000);  //TODO  here needs improvement
+//                    if (queueOccupiedRatio >= 99.0) { // specially used for PFC
+//                        ospfCost = 10000000;
+//                    }
+//                    else {
+//                        ospfCost = std::round(propagationDelay * 10000)
+//                                + (int)(queueOccupiedRatio * 8000);  //TODO  here needs improvement
+//                    }
+                    ospfCost = std::round(propagationDelay * 10000)
+                            + (int)(10000000 / (1 + std::exp(-0.015 * (queueOccupiedRatio * 1000 - 1000))));
+//                    std::cout << "cost: " << ospfCost << std::endl;
                     if (ospfCost <= 0) {
                         ospfCost = 1;
                     }
@@ -233,6 +252,11 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
                         foundIntf->getArea()->floodLSA(newLSA);
                         delete newLSA;
                     }
+
+                    if (shouldRebuildRoutingTable) {
+                        ospfRouter->rebuildRoutingTable();
+                    }
+
                     break;
                 }
             }

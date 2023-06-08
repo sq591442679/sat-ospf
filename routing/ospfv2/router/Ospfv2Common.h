@@ -67,6 +67,10 @@ namespace ospfv2 {
 #define RECORD_CSV                             true
 #define SEND_ICMP                              false
 
+#define LOAD_SCALE                             1.0
+
+#define PFC                                    true
+
 const std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > routerIDsByNetwork = {
         {Ipv4Address(192, 168, 1, 0), std::make_pair(Ipv4Address(0, 0, 1, 1), Ipv4Address(0, 0, 1, 2))},
         {Ipv4Address(192, 168, 2, 0), std::make_pair(Ipv4Address(0, 0, 1, 1), Ipv4Address(0, 0, 2, 1))},
@@ -536,6 +540,23 @@ const std::map <Ipv4Address, Ipv4Address> routerIDByIPAddress = {
         {Ipv4Address(192, 168, 131, 1), Ipv4Address(0, 0, 11, 6)},
 };
 
+const std::map<int, double> propagationDelayByID = {
+        {0, 0.013431},
+        {1, 0.004139},
+        {2, 0.016173},
+        {3, 0.023073},
+        {4, 0.022647},
+        {5, 0.015030},
+        {6, 0.002642},
+        {7, 0.010585},
+        {8, 0.020451},
+        {9, 0.023825},
+        {10, 0.019634},
+        {11, 0.009209}
+};
+
+const int averagePacketSize = 1024; // Byte
+const int bandwidth = 1310720; // Bps
 
 /*
  * @sqsq

@@ -17,7 +17,14 @@
 /*
  * @sqsq
  */
+#include "inet/routing/ospfv2/router/Ospfv2Router.h"
+#include "inet/routing/ospfv2/router/Ospfv2Area.h"
+#include "inet/routing/ospfv2/interface/Ospfv2Interface.h"
+#include "inet/routing/ospfv2/Ospfv2.h"
+#include "inet/networklayer/contract/ipv4/Ipv4Address.h"
+#include "inet/networklayer/common/NetworkInterface.h"
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
+#include <cmath>
 
 namespace inet {
 namespace queueing {
@@ -122,16 +129,17 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
 {
     Enter_Method("pushPacket");
 
-    /*
-     * @sqsq
-     */
-    checkAndEmitQueueLoadLevel(packet);
-
     take(packet);
     cNamedObject packetPushStartedDetails("atomicOperationStarted");
     emit(packetPushStartedSignal, packet, &packetPushStartedDetails);
     EV_INFO << "Pushing packet" << EV_FIELD(packet) << EV_ENDL;
     queue.insert(packet);
+
+    /*
+     * @sqsq
+     */
+    checkAndEmitQueueLoadLevel(packet);
+
     if (buffer != nullptr)
         buffer->addPacket(packet);
     else if (packetDropperFunction != nullptr) {
@@ -173,11 +181,6 @@ Packet *PacketQueue::pullPacket(cGate *gate)
     Enter_Method("pullPacket");
     auto packet = check_and_cast<Packet *>(queue.front());
 
-    /*
-     * @sqsq
-     */
-    checkAndEmitQueueLoadLevel(packet);
-
     EV_INFO << "Pulling packet" << EV_FIELD(packet) << EV_ENDL;
     if (buffer != nullptr) {
         queue.remove(packet);
@@ -185,6 +188,12 @@ Packet *PacketQueue::pullPacket(cGate *gate)
     }
     else
         queue.pop();
+
+    /*
+     * @sqsq
+     */
+    checkAndEmitQueueLoadLevel(packet);
+
     auto queueingTime = simTime() - packet->getArrivalTime();
     auto packetEvent = new PacketQueuedEvent();
     packetEvent->setQueuePacketLength(getNumPackets());
@@ -265,17 +274,65 @@ void PacketQueue::handlePacketRemoved(Packet *packet)
 void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
 {
     int currentNumPackets = getNumPackets();
+    inet::ospfv2::Ospfv2 *ospfModule = check_and_cast<inet::ospfv2::Ospfv2 *>(this->getParentModule()->getParentModule()->getSubmodule("ospf"));
+    ospfv2::Router *ospfRouter = ospfModule->getOspfRouter();
+    ospfv2::Ospfv2Area *ospfArea = ospfRouter->getAreaByID(Ipv4Address(0, 0, 0, 0));
+    Ipv4Address routerID = ospfRouter->getRouterID();
+    NetworkInterface *currentInterface = check_and_cast<NetworkInterface *>(this->getParentModule());
+    double totalPropagationDelay = 0.0;
+    std::vector<int> interfaceIndices = ospfArea->getInterfaceIndices();
 
     if (ospfv2::sqsqCheckSimTime() && LOAD_BALANCE) {
-        if (std::abs(currentNumPackets - previousNumPackets) >= getMaxNumPackets() / 10) { // TODO needs improvement
-            double queueChangedOccupiedRatio = ((double)(currentNumPackets - previousNumPackets)) / (double)getMaxNumPackets();
+        for (int index : interfaceIndices) {
+            ospfv2::Ospfv2Interface *associatedInterface = ospfArea->getInterface(index);
+            std::string associatedInterfaceName = associatedInterface->getInterfaceName();
+            std::string currentInterfaceName = currentInterface->getInterfaceName();
+            if (associatedInterface->getState() ==
+                    ospfv2::Ospfv2Interface::Ospfv2InterfaceStateType::POINTTOPOINT_STATE
+                &&
+                    associatedInterfaceName != currentInterfaceName) { // 找到该路由器在工作状态下的其它接口
+                int direction = associatedInterfaceName[associatedInterfaceName.length() - 1] - '0';
+                if (direction == 0 || direction == 1) {
+                    totalPropagationDelay += ospfv2::propagationDelayByID.find(0)->second;
+                }
+                else {
+                    totalPropagationDelay += ospfv2::propagationDelayByID.find(routerID.getDByte(2))->second;
+                }
+            }
+        }
+        int reservedPacketThreshold = std::ceil(totalPropagationDelay * (double)ospfv2::bandwidth / ospfv2::averagePacketSize);
+
+//        if (PFC && getMaxNumPackets() - currentNumPackets <= reservedPacketThreshold
+//                && getMaxNumPackets() - previousNumPackets > reservedPacketThreshold) { // 进入即将溢出的临界状态
+//            double queueOccupiedRatio = 100.0;
+//            previousNumPackets = currentNumPackets;
+//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
+//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
+////            std::cout << "at: " << simTime() << this->getParentModule()->getFullPath() << " "
+////                    << reservedPacketThreshold << " " << currentNumPackets << std::endl;
+//        }
+//        else if (PFC && getMaxNumPackets() - currentNumPackets > reservedPacketThreshold
+//                && getMaxNumPackets() - previousNumPackets <= reservedPacketThreshold) { // 退出即将溢出的临界状态
+//            double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
+//            previousNumPackets = currentNumPackets;
+//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
+//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
+//        }
+//        if (PFC && getMaxNumPackets() - currentNumPackets <= 100) {
+//            double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
+//            previousNumPackets = currentNumPackets;
+//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
+//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
+//        }
+        if (std::abs(currentNumPackets - previousNumPackets) >= getMaxNumPackets() * LOAD_SCALE) { // 在"普通状态下"的队列占用波动
+            double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
             previousNumPackets = currentNumPackets;
 
 //            std::cout << "at " << simTime() << " " << this->getParentModule()->getFullPath() << std::endl;
 //            std::cout << getNumPackets() << " " << packetCapacity << " ratio:" << queueChangedOccupiedRatio << std::endl;
 //            std::cout << "----------------------------------------\n";
 
-            QueueLoadChangeDetails details(this->getParentModule(), queueChangedOccupiedRatio);
+            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
             emit(queueLoadLevelSignal, this->getParentModule(), &details);
         }
     }

@@ -264,6 +264,11 @@ class INET_API Router
      */
     Ospfv2RoutingTableEntry *getPreferredEntry(const Ospfv2Lsa& lsa, bool skipSelfOriginated, std::vector<Ospfv2RoutingTableEntry *> *fromRoutingTable = nullptr);
 
+    /*
+     * @sqsq
+     */
+    IInterfaceTable *getIft() { return ift; }
+
   private:
     /**
      * Installs a new AS External LSA into the Router's database.
