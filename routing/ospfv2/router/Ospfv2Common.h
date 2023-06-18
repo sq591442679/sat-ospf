@@ -44,9 +44,9 @@ namespace ospfv2 {
 /*
  * @sqsq
  */
-#define SQSQ_CONVERGENCY_TIME                  170.000000
-#define SQSQ_HOP                               0
-#define EXPERIMENT_NAME                        "withDD-withoutLoopPrevention-withoutLoadBalance"
+#define SQSQ_CONVERGENCY_TIME                  20.000000
+#define SQSQ_HOP                               15
+#define EXPERIMENT_NAME                        "ELB"
 
 #define SQSQ_M                                 6    // num of orbits
 #define SQSQ_N                                 11   // num of satellites in one orbit
@@ -62,14 +62,15 @@ namespace ospfv2 {
 
 #define LOAD_BALANCE                           false
 
-#define IS_OSPF                                true
+#define IS_OSPF                                false
 
 #define RECORD_CSV                             true
 #define SEND_ICMP                              false
 
 #define LOAD_SCALE                             1.0
 
-#define PFC                                    true
+#define PFC                                    false
+#define ELB                                    true
 
 const std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > routerIDsByNetwork = {
         {Ipv4Address(192, 168, 1, 0), std::make_pair(Ipv4Address(0, 0, 1, 1), Ipv4Address(0, 0, 1, 2))},
@@ -595,14 +596,15 @@ inline int sqsqCalculateManhattanDistance(Ipv4Address addr1, Ipv4Address addr2)
  */
 inline int getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID)
 {
+//    std::cout << fromRouterID << " " << toRouterID << std::endl;
     int fromX = fromRouterID.getDByte(2), fromY = fromRouterID.getDByte(3);
     int toX = toRouterID.getDByte(2), toY = toRouterID.getDByte(3);
     // x: 1, ..., SQSQ_N     y: 1, ..., SQSQ_M
 
-    if (fromY == toY && toX == sqsqRescaleM(fromX - 1)) {
+    if (fromY == toY && toX == sqsqRescaleN(fromX - 1)) {
         return 0;
     }
-    if (fromY == toY && toX == sqsqRescaleM(fromX + 1)) {
+    if (fromY == toY && toX == sqsqRescaleN(fromX + 1)) {
         return 1;
     }
     if (fromX == toX && toY == sqsqRescaleM(fromY - 1)) {
@@ -611,8 +613,10 @@ inline int getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID)
     if (fromX == toX && toY == sqsqRescaleM(fromY + 1)) {
         return 3;
     }
-
-    throw omnetpp::cRuntimeError("can't calculate direction between non-neighboring satellites");
+//    std::string str = "can't calculate direction between non-neighboring satellites " + fromRouterID.str(0) + " " + toRouterID.str(0);
+//    const char* s = str.c_str();
+//    throw omnetpp::cRuntimeError(s);
+    throw omnetpp::cRuntimeError("can't calculate direction between non-neighboring satellites ");
 }
 
 const B IPV4_DATAGRAM_LENGTH                   = B(65536);

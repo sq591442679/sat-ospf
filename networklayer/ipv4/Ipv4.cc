@@ -46,9 +46,13 @@
  * @sqsq
  */
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
+#include "inet/queueing/queue/PacketQueue.h"
+#include "inet/common/ModuleAccess.h"
+#include "inet/routing/ospfv2/Ospfv2.h"
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <time.h>
 
 namespace inet {
 
@@ -62,6 +66,10 @@ std::ofstream Ipv4::ofs;
 
 Ipv4::Ipv4()
 {
+    /*
+     * @sqsq
+     */
+    std::srand(this->getId());
     if (!ofs.is_open()) {
         std::string filename = "/home/sqsq/Desktop/"
                 "sat-ospf/inet/examples/ospfv2/sqsqtest/results/";
@@ -564,6 +572,8 @@ void Ipv4::routeUnicastPacket(Packet *packet)
     bool stub = false;
     bool ttl0 = false;
 
+//    std::cout << ipv4Header->getProtocolId() << std::endl;
+
     if (ipv4Header->getTimeToLive() <= 0) {
         ttl0 = true;
         /*
@@ -618,6 +628,7 @@ void Ipv4::routeUnicastPacket(Packet *packet)
             /*
              * @sqsq
              */
+
             if (ospfv2::sqsqCheckSimTime() && LOOP_AVOIDANCE) {
                 std::vector<Ipv4Route *> removedRoutes;
 
@@ -703,6 +714,58 @@ void Ipv4::routeUnicastPacket(Packet *packet)
 
                 for (Ipv4Route *route : removedRoutes) {
                     rt->addRoute(route);
+                }
+            }
+            else if (ospfv2::sqsqCheckSimTime() && ELB && ipv4Header->getProtocolId() == IP_PROT_UDP) {
+                std::string interfaceName = destIE->getInterfaceName();
+                int direction = interfaceName[interfaceName.length() - 1] - '0';
+                double chi = getChi(direction);
+                double randomValue = static_cast<double>(std::rand()) / RAND_MAX;
+                if (randomValue < chi) {
+                    std::vector<Ipv4Route *> removedRoutes;
+                    rt->removeRoute(re);
+                    removedRoutes.push_back(re);
+//                    if (re == nullptr) {
+//                        std::cout << re << "1" << std::endl;
+//                    }
+                    re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                    if (re == nullptr) {
+//                        std::cout << re << "2" << std::endl;
+//                    }
+//                    std::cout << "re: " << re->getDestination() << "   memRe: " << memRe->getDestination();
+                    if (re != nullptr) {
+                        destIE = re->getInterface();
+                        packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+                        packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+
+                        while (fromIE && fromIE == destIE) {  // when input interface == output interface, we must find the next (worse) entry
+                            rt->removeRoute(re); // in removeRoute(), the pointer is not really "deleted"
+                            removedRoutes.push_back(re);
+                            re = rt->findBestMatchingRoute(destAddr); // find the next entry in routing table
+//                            if (re == nullptr) {
+//                                std::cout << re << "3" << std::endl;
+//                            }
+                            if (re != nullptr) {
+                                destIE = re->getInterface();
+                                packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+                                packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+                            }
+                            else {
+                                break;
+                            }
+                        }
+                    }
+
+                    if (re == nullptr) {
+                        re = memRe;
+//                        std::cout << "re: " << re << std::endl;
+                        destIE = re->getInterface();
+                        packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE->getInterfaceId());
+                        packet->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(re->getGateway());
+                    }
+                    for (Ipv4Route *route : removedRoutes) {
+                        rt->addRoute(route);
+                    }
                 }
             }
         }
@@ -1610,6 +1673,7 @@ void Ipv4::sendIcmpError(Packet *origPacket, int inputInterfaceId, IcmpType type
     }
     delete origPacket;
 }
+
 
 } // namespace inet
 

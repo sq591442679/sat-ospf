@@ -153,7 +153,7 @@ void doParsimUnpacking(omnetpp::cCommBuffer *, T& t)
 namespace inet {
 namespace ospf {
 
-Register_Enum(inet::ospf::OspfPacketType, (inet::ospf::OspfPacketType::HELLO_PACKET, inet::ospf::OspfPacketType::DATABASE_DESCRIPTION_PACKET, inet::ospf::OspfPacketType::LINKSTATE_REQUEST_PACKET, inet::ospf::OspfPacketType::LINKSTATE_UPDATE_PACKET, inet::ospf::OspfPacketType::LINKSTATE_ACKNOWLEDGEMENT_PACKET));
+Register_Enum(inet::ospf::OspfPacketType, (inet::ospf::OspfPacketType::HELLO_PACKET, inet::ospf::OspfPacketType::DATABASE_DESCRIPTION_PACKET, inet::ospf::OspfPacketType::LINKSTATE_REQUEST_PACKET, inet::ospf::OspfPacketType::LINKSTATE_UPDATE_PACKET, inet::ospf::OspfPacketType::LINKSTATE_ACKNOWLEDGEMENT_PACKET, inet::ospf::OspfPacketType::ELB_PACKET));
 
 Register_Class(OspfPacketBase)
 

@@ -18,6 +18,7 @@
 /*
  * @sqsq
  */
+#include "inet/networklayer/ipv4/Ipv4.h"
 #include <fstream>
 
 namespace inet {
@@ -49,6 +50,28 @@ public:
     }
 };
 
+class INET_API ELBDetails : public cObject
+{
+private:
+    double chi;
+    cObject *module;
+
+public:
+    ELBDetails(cObject *obj, double chi):
+        module(obj),
+        chi(chi)
+    {
+    }
+    double getChi()
+    {
+        return chi;
+    }
+    cObject *getIpv4Module()
+    {
+        return module;
+    }
+};
+
 class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICallback
 {
   protected:
@@ -69,6 +92,8 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
      */
     int previousNumPackets = 0;
     static std::ofstream ofs;
+    int I = 0; //ELB: monitor queue in every delta interal time
+    int O = 0;
 
   protected:
     virtual void initialize(int stage) override;
@@ -109,6 +134,7 @@ class INET_API PacketQueue : public PacketQueueBase, public IPacketBuffer::ICall
      */
     virtual void checkAndEmitQueueLoadLevel(Packet *packet);
     virtual void finish() override;
+    virtual void calculateAndChangeOSPFChi();
 };
 
 } // namespace queueing

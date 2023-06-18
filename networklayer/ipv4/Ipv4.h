@@ -100,6 +100,8 @@ class INET_API Ipv4 : public OperationalBase, public NetfilterBase, public INetw
      * @sqsq
      */
     static std::ofstream ofs;
+    double chiArray[4] = {0.0, 0.0, 0.0, 0.0};  // 要往上下左右4个方向转发时的流量偏转值
+
 
     // hooks
     typedef std::list<QueuedDatagramForHook> DatagramQueueForHooks;
@@ -299,6 +301,12 @@ class INET_API Ipv4 : public OperationalBase, public NetfilterBase, public INetw
 
     /// cListener method
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
+
+    /*
+     * @sqsq
+     */
+    void setChi(int direction, double _chi) { chiArray[direction] = _chi; }
+    double getChi(int direction) { return chiArray[direction]; }
 
   protected:
     virtual void start();

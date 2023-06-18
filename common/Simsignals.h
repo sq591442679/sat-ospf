@@ -143,7 +143,8 @@ checkSatToGroundSignal,
 /*
  * @sqsq
  */
-queueLoadLevelSignal;
+queueLoadLevelSignal,
+ELBChiSignal;
 
 
 /**

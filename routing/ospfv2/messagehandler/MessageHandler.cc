@@ -17,6 +17,15 @@
 #include <fstream>
 #include <string>
 
+/*
+ * @sqsq
+ */
+#include "inet/networklayer/contract/ipv4/Ipv4Address.h"
+#include "inet/networklayer/ipv4/Ipv4.h"
+#include "inet/routing/ospfv2/Ospfv2.h"
+#include "inet/queueing/queue/PacketQueue.h"
+#include "inet/routing/ospfv2/Ospfv2Crc.h"
+
 namespace inet {
 
 namespace ospfv2 {
@@ -37,7 +46,7 @@ MessageHandler::MessageHandler(Router *containingRouter, cSimpleModule *containi
      */
     controlPacketCount.clear();
     controlPacketSize.clear();
-    for (OspfPacketType type : {HELLO_PACKET, DATABASE_DESCRIPTION_PACKET, LINKSTATE_REQUEST_PACKET, LINKSTATE_UPDATE_PACKET, LINKSTATE_ACKNOWLEDGEMENT_PACKET}) {
+    for (OspfPacketType type : {HELLO_PACKET, DATABASE_DESCRIPTION_PACKET, LINKSTATE_REQUEST_PACKET, LINKSTATE_UPDATE_PACKET, LINKSTATE_ACKNOWLEDGEMENT_PACKET, ELB_PACKET}) {
         controlPacketCount[type] = 0;
         controlPacketSize[type] = 0;
     }
@@ -217,6 +226,80 @@ void MessageHandler::handleTimer(cMessage *timer)
         }
         break;
 
+        /*
+         * @sqsq
+         */
+        case ELB_TIMER: {
+            if (ospfv2::sqsqCheckSimTime() && ELB) {
+                Router *ospfRouter = check_and_cast<Ospfv2 *>(ospfModule)->getOspfRouter();
+                std::string interfaceNames[] = {"eth0", "eth1", "eth2", "eth3"};
+                double chi = 0.0;
+
+                // 计算要向外通告的chi，即4个接口各自算出的chi的最大值
+                for (std::string interfaceName : interfaceNames) {
+                    for (auto& areaId : ospfRouter->getAreaIds()) {
+                        Ospfv2Area *area = ospfRouter->getAreaByID(areaId);
+                        if (area) {
+                            for (auto& ifIndex : area->getInterfaceIndices()) {
+                                Ospfv2Interface *intf = area->getInterface(ifIndex);
+                                if (intf->getInterfaceName() == interfaceName
+                                        && intf->getState()==Ospfv2Interface::POINTTOPOINT_STATE) {
+                                    int direction = interfaceName[interfaceName.length() - 1] - '0';
+//                                    for (std::string name : ospfModule->getParentModule()->getSubmoduleNames()) {
+//                                        std::cout << name << std::endl;
+//                                    }
+//                                    std::cout << ospfModule->getParentModule()->getSubmodule("eth", 0)->getFullPath() << std::endl;
+                                    if (ospfModule->getParentModule()->getSubmodule("eth", direction) == nullptr ||
+                                            ospfModule->getParentModule()->getSubmodule("eth", direction)->getSubmodule("queue") == nullptr) {
+                                        std::cout << "at " << simTime() << " " << ospfModule->getFullPath() <<
+                                                " eth" << direction << " not found\n";
+                                    }
+                                    else {
+                                        queueing::PacketQueue *packetQueueModule = check_and_cast<queueing::PacketQueue *>(
+                                                ospfModule->getParentModule()->getSubmodule("eth", direction)->getSubmodule("queue"));
+                                        packetQueueModule->calculateAndChangeOSPFChi();
+                                        chi = std::max(chi, check_and_cast<Ospfv2 *>(ospfModule)->getChiArray()[direction]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 通告ELB packet
+                for (auto& areaId : check_and_cast<Ospfv2 *>(ospfModule)->getOspfRouter()->getAreaIds()) {
+    //                std::cout << "at " << simTime() << " " << this->getFullPath() << " sends ELB, chi=" << chi << std::endl;
+                    Ospfv2Area *area = check_and_cast<Ospfv2 *>(ospfModule)->getOspfRouter()->getAreaByID(areaId);
+                    if (area) {
+                        for (auto& ifIndex : area->getInterfaceIndices()) {
+                            Ospfv2Interface *intf = area->getInterface(ifIndex);
+                            for (unsigned long i = 0; i < intf->getNeighborCount(); i++) {
+                                const auto& packet = makeShared<ELBPacket>();
+                                packet->setRouterID(Ipv4Address(ospfRouter->getRouterID()));
+                                packet->setAreaID(Ipv4Address(area->getAreaID()));
+                                packet->setAuthenticationType(NULL_TYPE);
+                                packet->setPacketLengthField(32);
+                                packet->setChunkLength(B(packet->getPacketLengthField()));
+                                for (int j = 0; j < 8; j++) {
+                                    packet->setAuthentication(j, '0');
+                                }
+                                setOspfCrc(packet, CRC_DECLARED_CORRECT);
+
+                                packet->setChi(chi);
+
+                                Packet *pk = new Packet();
+                                pk->insertAtBack(packet);
+                                sendPacket(pk, intf->getNeighbor(i)->getAddress(), intf, 1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            startTimer(timer, check_and_cast<Ospfv2 *>(ospfModule)->getDelta());
+        }
+        break;
+
         default:
             break;
     }
@@ -355,6 +438,24 @@ void MessageHandler::processPacket(Packet *pk, Ospfv2Interface *unused1, Neighbo
                                 }
                                 break;
 
+                            /*
+                             * @sqsq
+                             */
+                            case ELB_PACKET: {
+                                const auto& packet = pk->peekAtFront<ELBPacket>();
+                                double chi = packet->getChi();
+//                                std::cout << "at " << simTime() << " " << ospfModule->getFullPath()
+//                                        << " receives ELB packet, chi=" << chi <<std::endl;
+                                Ipv4 *ipv4Module = check_and_cast<Ipv4 *>(ospfModule->getParentModule()->getSubmodule("ipv4")->getSubmodule("ip"));
+//                                std::cout << ipv4Module->getFullPath() << std::endl;
+                                Ipv4Address srcRouterID = packet->getRouterID();
+                                Ipv4Address currentRouterID = check_and_cast<Ospfv2 *>(ospfModule)->getOspfRouter()->getRouterID();
+//                                std::cout << srcRouterID << " " << currentRouterID << std::endl;
+                                int direction = getDirection(currentRouterID, srcRouterID);
+                                ipv4Module->setChi(direction, chi);
+                                break;
+                            }
+
                             default:
                                 break;
                         }
@@ -430,6 +531,14 @@ void MessageHandler::sendPacket(Packet *packet, Ipv4Address destination, Ospfv2I
 
             const auto& ackPacket = packet->peekAtFront<Ospfv2LinkStateAcknowledgementPacket>();
             printLinkStateAcknowledgementPacket(ackPacket.get(), destination, outputIfIndex);
+        }
+        break;
+
+        /*
+         * @sqsq
+         */
+        case ELB_PACKET: {
+            packet->setName("OSPF_ELBPacket");
         }
         break;
 

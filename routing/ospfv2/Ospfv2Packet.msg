@@ -26,6 +26,11 @@ enum Ospfv2TimerType {
     NEIGHBOR_UPDATE_RETRANSMISSION_TIMER = 7;
     NEIGHBOR_REQUEST_RETRANSMISSION_TIMER = 8;
     DATABASE_AGE_TIMER = 9;
+    
+    //
+    // @sqsq
+    //
+    ELB_TIMER = 10;
 };
 
 // should be a byte long bitfield
@@ -255,4 +260,13 @@ class Ospfv2LinkStateUpdatePacket extends Ospfv2Packet
 class Ospfv2LinkStateAcknowledgementPacket extends Ospfv2Packet
 {
     Ospfv2LsaHeader lsaHeaders[];     //TODO
+}
+
+//
+// @sqsq
+//
+class ELBPacket extends Ospfv2Packet
+{
+    type = ELB_PACKET;
+    double chi;  //64 bits
 }

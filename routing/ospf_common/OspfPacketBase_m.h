@@ -58,6 +58,9 @@ namespace ospf {
  *     LINKSTATE_REQUEST_PACKET = 3;
  *     LINKSTATE_UPDATE_PACKET = 4;
  *     LINKSTATE_ACKNOWLEDGEMENT_PACKET = 5;
+ * 
+ *     // \@sqsq
+ *     ELB_PACKET = 6;
  * }
  * </pre>
  */
@@ -66,14 +69,15 @@ enum OspfPacketType {
     DATABASE_DESCRIPTION_PACKET = 2,
     LINKSTATE_REQUEST_PACKET = 3,
     LINKSTATE_UPDATE_PACKET = 4,
-    LINKSTATE_ACKNOWLEDGEMENT_PACKET = 5
+    LINKSTATE_ACKNOWLEDGEMENT_PACKET = 5,
+    ELB_PACKET = 6
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const OspfPacketType& e) { b->pack(static_cast<int>(e)); }
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, OspfPacketType& e) { int n; b->unpack(n); e = static_cast<OspfPacketType>(n); }
 
 /**
- * Class generated from <tt>inet/routing/ospf_common/OspfPacketBase.msg:27</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospf_common/OspfPacketBase.msg:30</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF packet header

@@ -153,7 +153,7 @@ void doParsimUnpacking(omnetpp::cCommBuffer *, T& t)
 namespace inet {
 namespace ospfv2 {
 
-Register_Enum(inet::ospfv2::Ospfv2TimerType, (inet::ospfv2::Ospfv2TimerType::INTERFACE_HELLO_TIMER, inet::ospfv2::Ospfv2TimerType::INTERFACE_WAIT_TIMER, inet::ospfv2::Ospfv2TimerType::INTERFACE_ACKNOWLEDGEMENT_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_INACTIVITY_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_POLL_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_DD_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_UPDATE_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_REQUEST_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::DATABASE_AGE_TIMER));
+Register_Enum(inet::ospfv2::Ospfv2TimerType, (inet::ospfv2::Ospfv2TimerType::INTERFACE_HELLO_TIMER, inet::ospfv2::Ospfv2TimerType::INTERFACE_WAIT_TIMER, inet::ospfv2::Ospfv2TimerType::INTERFACE_ACKNOWLEDGEMENT_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_INACTIVITY_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_POLL_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_DD_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_UPDATE_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::NEIGHBOR_REQUEST_RETRANSMISSION_TIMER, inet::ospfv2::Ospfv2TimerType::DATABASE_AGE_TIMER, inet::ospfv2::Ospfv2TimerType::ELB_TIMER));
 
 Ospfv2Options::Ospfv2Options()
 {
@@ -8408,6 +8408,361 @@ void Ospfv2LinkStateAcknowledgementPacketDescriptor::setFieldStructValuePointer(
     Ospfv2LinkStateAcknowledgementPacket *pp = omnetpp::fromAnyPtr<Ospfv2LinkStateAcknowledgementPacket>(object); (void)pp;
     switch (field) {
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'Ospfv2LinkStateAcknowledgementPacket'", field);
+    }
+}
+
+Register_Class(ELBPacket)
+
+ELBPacket::ELBPacket() : ::inet::ospfv2::Ospfv2Packet()
+{
+    this->setType(ELB_PACKET);
+
+}
+
+ELBPacket::ELBPacket(const ELBPacket& other) : ::inet::ospfv2::Ospfv2Packet(other)
+{
+    copy(other);
+}
+
+ELBPacket::~ELBPacket()
+{
+}
+
+ELBPacket& ELBPacket::operator=(const ELBPacket& other)
+{
+    if (this == &other) return *this;
+    ::inet::ospfv2::Ospfv2Packet::operator=(other);
+    copy(other);
+    return *this;
+}
+
+void ELBPacket::copy(const ELBPacket& other)
+{
+    this->chi = other.chi;
+}
+
+void ELBPacket::parsimPack(omnetpp::cCommBuffer *b) const
+{
+    ::inet::ospfv2::Ospfv2Packet::parsimPack(b);
+    doParsimPacking(b,this->chi);
+}
+
+void ELBPacket::parsimUnpack(omnetpp::cCommBuffer *b)
+{
+    ::inet::ospfv2::Ospfv2Packet::parsimUnpack(b);
+    doParsimUnpacking(b,this->chi);
+}
+
+double ELBPacket::getChi() const
+{
+    return this->chi;
+}
+
+void ELBPacket::setChi(double chi)
+{
+    handleChange();
+    this->chi = chi;
+}
+
+class ELBPacketDescriptor : public omnetpp::cClassDescriptor
+{
+  private:
+    mutable const char **propertyNames;
+    enum FieldConstants {
+        FIELD_chi,
+    };
+  public:
+    ELBPacketDescriptor();
+    virtual ~ELBPacketDescriptor();
+
+    virtual bool doesSupport(omnetpp::cObject *obj) const override;
+    virtual const char **getPropertyNames() const override;
+    virtual const char *getProperty(const char *propertyName) const override;
+    virtual int getFieldCount() const override;
+    virtual const char *getFieldName(int field) const override;
+    virtual int findField(const char *fieldName) const override;
+    virtual unsigned int getFieldTypeFlags(int field) const override;
+    virtual const char *getFieldTypeString(int field) const override;
+    virtual const char **getFieldPropertyNames(int field) const override;
+    virtual const char *getFieldProperty(int field, const char *propertyName) const override;
+    virtual int getFieldArraySize(omnetpp::any_ptr object, int field) const override;
+    virtual void setFieldArraySize(omnetpp::any_ptr object, int field, int size) const override;
+
+    virtual const char *getFieldDynamicTypeString(omnetpp::any_ptr object, int field, int i) const override;
+    virtual std::string getFieldValueAsString(omnetpp::any_ptr object, int field, int i) const override;
+    virtual void setFieldValueAsString(omnetpp::any_ptr object, int field, int i, const char *value) const override;
+    virtual omnetpp::cValue getFieldValue(omnetpp::any_ptr object, int field, int i) const override;
+    virtual void setFieldValue(omnetpp::any_ptr object, int field, int i, const omnetpp::cValue& value) const override;
+
+    virtual const char *getFieldStructName(int field) const override;
+    virtual omnetpp::any_ptr getFieldStructValuePointer(omnetpp::any_ptr object, int field, int i) const override;
+    virtual void setFieldStructValuePointer(omnetpp::any_ptr object, int field, int i, omnetpp::any_ptr ptr) const override;
+};
+
+Register_ClassDescriptor(ELBPacketDescriptor)
+
+ELBPacketDescriptor::ELBPacketDescriptor() : omnetpp::cClassDescriptor(omnetpp::opp_typename(typeid(inet::ospfv2::ELBPacket)), "inet::ospfv2::Ospfv2Packet")
+{
+    propertyNames = nullptr;
+}
+
+ELBPacketDescriptor::~ELBPacketDescriptor()
+{
+    delete[] propertyNames;
+}
+
+bool ELBPacketDescriptor::doesSupport(omnetpp::cObject *obj) const
+{
+    return dynamic_cast<ELBPacket *>(obj)!=nullptr;
+}
+
+const char **ELBPacketDescriptor::getPropertyNames() const
+{
+    if (!propertyNames) {
+        static const char *names[] = {  nullptr };
+        omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+        const char **baseNames = base ? base->getPropertyNames() : nullptr;
+        propertyNames = mergeLists(baseNames, names);
+    }
+    return propertyNames;
+}
+
+const char *ELBPacketDescriptor::getProperty(const char *propertyName) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    return base ? base->getProperty(propertyName) : nullptr;
+}
+
+int ELBPacketDescriptor::getFieldCount() const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    return base ? 1+base->getFieldCount() : 1;
+}
+
+unsigned int ELBPacketDescriptor::getFieldTypeFlags(int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldTypeFlags(field);
+        field -= base->getFieldCount();
+    }
+    static unsigned int fieldTypeFlags[] = {
+        FD_ISEDITABLE,    // FIELD_chi
+    };
+    return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
+}
+
+const char *ELBPacketDescriptor::getFieldName(int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldName(field);
+        field -= base->getFieldCount();
+    }
+    static const char *fieldNames[] = {
+        "chi",
+    };
+    return (field >= 0 && field < 1) ? fieldNames[field] : nullptr;
+}
+
+int ELBPacketDescriptor::findField(const char *fieldName) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    int baseIndex = base ? base->getFieldCount() : 0;
+    if (strcmp(fieldName, "chi") == 0) return baseIndex + 0;
+    return base ? base->findField(fieldName) : -1;
+}
+
+const char *ELBPacketDescriptor::getFieldTypeString(int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldTypeString(field);
+        field -= base->getFieldCount();
+    }
+    static const char *fieldTypeStrings[] = {
+        "double",    // FIELD_chi
+    };
+    return (field >= 0 && field < 1) ? fieldTypeStrings[field] : nullptr;
+}
+
+const char **ELBPacketDescriptor::getFieldPropertyNames(int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldPropertyNames(field);
+        field -= base->getFieldCount();
+    }
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+const char *ELBPacketDescriptor::getFieldProperty(int field, const char *propertyName) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldProperty(field, propertyName);
+        field -= base->getFieldCount();
+    }
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+int ELBPacketDescriptor::getFieldArraySize(omnetpp::any_ptr object, int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldArraySize(object, field);
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        default: return 0;
+    }
+}
+
+void ELBPacketDescriptor::setFieldArraySize(omnetpp::any_ptr object, int field, int size) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount()){
+            base->setFieldArraySize(object, field, size);
+            return;
+        }
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        default: throw omnetpp::cRuntimeError("Cannot set array size of field %d of class 'ELBPacket'", field);
+    }
+}
+
+const char *ELBPacketDescriptor::getFieldDynamicTypeString(omnetpp::any_ptr object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldDynamicTypeString(object,field,i);
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+std::string ELBPacketDescriptor::getFieldValueAsString(omnetpp::any_ptr object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldValueAsString(object,field,i);
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        case FIELD_chi: return double2string(pp->getChi());
+        default: return "";
+    }
+}
+
+void ELBPacketDescriptor::setFieldValueAsString(omnetpp::any_ptr object, int field, int i, const char *value) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount()){
+            base->setFieldValueAsString(object, field, i, value);
+            return;
+        }
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        case FIELD_chi: pp->setChi(string2double(value)); break;
+        default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'ELBPacket'", field);
+    }
+}
+
+omnetpp::cValue ELBPacketDescriptor::getFieldValue(omnetpp::any_ptr object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldValue(object,field,i);
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        case FIELD_chi: return pp->getChi();
+        default: throw omnetpp::cRuntimeError("Cannot return field %d of class 'ELBPacket' as cValue -- field index out of range?", field);
+    }
+}
+
+void ELBPacketDescriptor::setFieldValue(omnetpp::any_ptr object, int field, int i, const omnetpp::cValue& value) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount()){
+            base->setFieldValue(object, field, i, value);
+            return;
+        }
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        case FIELD_chi: pp->setChi(value.doubleValue()); break;
+        default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'ELBPacket'", field);
+    }
+}
+
+const char *ELBPacketDescriptor::getFieldStructName(int field) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldStructName(field);
+        field -= base->getFieldCount();
+    }
+    switch (field) {
+        default: return nullptr;
+    };
+}
+
+omnetpp::any_ptr ELBPacketDescriptor::getFieldStructValuePointer(omnetpp::any_ptr object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount())
+            return base->getFieldStructValuePointer(object, field, i);
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        default: return omnetpp::any_ptr(nullptr);
+    }
+}
+
+void ELBPacketDescriptor::setFieldStructValuePointer(omnetpp::any_ptr object, int field, int i, omnetpp::any_ptr ptr) const
+{
+    omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
+    if (base) {
+        if (field < base->getFieldCount()){
+            base->setFieldStructValuePointer(object, field, i, ptr);
+            return;
+        }
+        field -= base->getFieldCount();
+    }
+    ELBPacket *pp = omnetpp::fromAnyPtr<ELBPacket>(object); (void)pp;
+    switch (field) {
+        default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'ELBPacket'", field);
     }
 }
 

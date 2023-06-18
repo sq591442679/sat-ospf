@@ -25,15 +25,27 @@
  */
 #include "inet/queueing/queue/PacketQueue.h"
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
+#include "inet/routing/ospfv2/Ospfv2Crc.h"
 #include <cmath>
 
 namespace inet {
 namespace ospfv2 {
 
+/*
+ * @sqsq
+ */
+double Ospfv2::delta = 0.001;
+
 Define_Module(Ospfv2);
 
 Ospfv2::Ospfv2()
 {
+    /*
+     * @sqsq
+     */
+    if (ELB) {
+        ELBTimer = new cMessage("ELBTimer", ELB_TIMER);
+    }
 }
 
 Ospfv2::~Ospfv2()
@@ -59,6 +71,11 @@ void Ospfv2::initialize(int stage)
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) { // interfaces and static routes are already initialized
         registerProtocol(Protocol::ospf, gate("ipOut"), gate("ipIn"));
+
+        /*
+         * @sqsq
+         */
+        ospfRouter->getMessageHandler()->startTimer(ELBTimer, delta);
     }
 }
 
@@ -97,6 +114,7 @@ void Ospfv2::subscribe()
      */
     host->subscribe(queueLoadLevelSignal, this);
     host->subscribe(packetDroppedSignal, this);
+    host->subscribe(ELBChiSignal, this);
 }
 
 void Ospfv2::unsubscribe()
@@ -110,6 +128,7 @@ void Ospfv2::unsubscribe()
      */
     host->unsubscribe(queueLoadLevelSignal, this);
     host->unsubscribe(packetDroppedSignal, this);
+    host->unsubscribe(ELBChiSignal, this);
 }
 
 /**
@@ -203,24 +222,18 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
                 }
                 if (foundIntf && foundIntf->getState() != Ospfv2Interface::DOWN_STATE) {
                     Metric ospfCost = foundIntf->getOutputCost();
-//                    if (queueOccupiedRatio >= 99.0) { // specially used for PFC
-//                        ospfCost = 10000000;
-//                    }
-//                    else {
-//                        ospfCost = std::round(propagationDelay * 10000)
-//                                + (int)(queueOccupiedRatio * 8000);  //TODO  here needs improvement
-//                    }
-                    ospfCost = std::round(propagationDelay * 10000)
+                    if (PFC) {
+                        ospfCost = std::round(propagationDelay * 10000)
                             + (int)(10000000 / (1 + std::exp(-0.015 * (queueOccupiedRatio * 1000 - 1000))));
-//                    std::cout << "cost: " << ospfCost << std::endl;
+                    }
+                    else {
+                        ospfCost = std::round(propagationDelay * 10000)
+                            + std::round(queueOccupiedRatio * 8000);
+                    }
                     if (ospfCost <= 0) {
                         ospfCost = 1;
                     }
                     foundIntf->setOutputCost(ospfCost);
-
-//                    std::cout << "at " << simTime() << std::endl;
-//                    std::cout << "corresponding ospfv2inerface: " << foundIntf->getAddressRange().address << "  cost:"  << foundIntf->getOutputCost() << std::endl;
-//                    std::cout << "-----------------------------------------------------------------------------\n";
 
                     bool shouldRebuildRoutingTable = false;
                     RouterLsa *routerLSA = foundIntf->getArea()->findRouterLSA(foundIntf->getArea()->getRouter()->getRouterID());
@@ -265,6 +278,13 @@ void Ospfv2::receiveSignal(cComponent *source, simsignal_t signalID, cObject *ob
 
     else if (signalID == packetDroppedSignal) {
         dropPacketCnt++;
+    }
+
+    /*
+     * @sqsq
+     */
+    else if (signalID == ELBChiSignal) {
+
     }
 
     else

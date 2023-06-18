@@ -135,6 +135,7 @@ simsignal_t tokensDepletedSignal = cComponent::registerSignal("tokensDepleted");
  * @sqsq
  */
 simsignal_t queueLoadLevelSignal = cComponent::registerSignal("queueLoadLevel");
+simsignal_t ELBChiSignal = cComponent::registerSignal("ELBChi");
 
 
 void printSignalBanner(simsignal_t signalID, const cObject *obj, const cObject *details)

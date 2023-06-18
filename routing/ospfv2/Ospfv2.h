@@ -35,7 +35,10 @@ class INET_API Ospfv2 : public RoutingProtocolBase, protected cListener
     /*
      * @sqsq
      */
+    static double delta;  // delta in ELB
     int dropPacketCnt = 0;
+    double chiArray[4] = {0.0, 0.0, 0.0, 0.0}; // 4个接口各自计算出的chi, 取最大的向外通告
+    cMessage *ELBTimer;
 
   public:
     Ospfv2();
@@ -59,6 +62,8 @@ class INET_API Ospfv2 : public RoutingProtocolBase, protected cListener
      * @sqsq
      */
     Router *getOspfRouter() { return ospfRouter; }
+    double *getChiArray() { return chiArray; }
+    double getDelta() { return delta; }
 
   protected:
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }

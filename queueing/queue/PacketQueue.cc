@@ -24,6 +24,7 @@
 #include "inet/networklayer/contract/ipv4/Ipv4Address.h"
 #include "inet/networklayer/common/NetworkInterface.h"
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
+#include "inet/networklayer/ipv4/Ipv4.h"
 #include <cmath>
 
 namespace inet {
@@ -138,7 +139,9 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
     /*
      * @sqsq
      */
+//    std::cout << this->getFullName()  << " " << this->getParentModule()->getFullName() << std::endl;
     checkAndEmitQueueLoadLevel(packet);
+    I++;
 
     if (buffer != nullptr)
         buffer->addPacket(packet);
@@ -193,6 +196,7 @@ Packet *PacketQueue::pullPacket(cGate *gate)
      * @sqsq
      */
     checkAndEmitQueueLoadLevel(packet);
+    O++;
 
     auto queueingTime = simTime() - packet->getArrivalTime();
     auto packetEvent = new PacketQueuedEvent();
@@ -280,6 +284,7 @@ void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
     Ipv4Address routerID = ospfRouter->getRouterID();
     NetworkInterface *currentInterface = check_and_cast<NetworkInterface *>(this->getParentModule());
     double totalPropagationDelay = 0.0;
+    double maxPropagationDelay = 0.0;
     std::vector<int> interfaceIndices = ospfArea->getInterfaceIndices();
 
     if (ospfv2::sqsqCheckSimTime() && LOAD_BALANCE) {
@@ -293,44 +298,20 @@ void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
                     associatedInterfaceName != currentInterfaceName) { // 找到该路由器在工作状态下的其它接口
                 int direction = associatedInterfaceName[associatedInterfaceName.length() - 1] - '0';
                 if (direction == 0 || direction == 1) {
+                    maxPropagationDelay = std::max(maxPropagationDelay, ospfv2::propagationDelayByID.find(0)->second);
                     totalPropagationDelay += ospfv2::propagationDelayByID.find(0)->second;
                 }
                 else {
+                    maxPropagationDelay = std::max(maxPropagationDelay, ospfv2::propagationDelayByID.find(2)->second);
                     totalPropagationDelay += ospfv2::propagationDelayByID.find(routerID.getDByte(2))->second;
                 }
             }
         }
         int reservedPacketThreshold = std::ceil(totalPropagationDelay * (double)ospfv2::bandwidth / ospfv2::averagePacketSize);
 
-//        if (PFC && getMaxNumPackets() - currentNumPackets <= reservedPacketThreshold
-//                && getMaxNumPackets() - previousNumPackets > reservedPacketThreshold) { // 进入即将溢出的临界状态
-//            double queueOccupiedRatio = 100.0;
-//            previousNumPackets = currentNumPackets;
-//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
-//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
-////            std::cout << "at: " << simTime() << this->getParentModule()->getFullPath() << " "
-////                    << reservedPacketThreshold << " " << currentNumPackets << std::endl;
-//        }
-//        else if (PFC && getMaxNumPackets() - currentNumPackets > reservedPacketThreshold
-//                && getMaxNumPackets() - previousNumPackets <= reservedPacketThreshold) { // 退出即将溢出的临界状态
-//            double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
-//            previousNumPackets = currentNumPackets;
-//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
-//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
-//        }
-//        if (PFC && getMaxNumPackets() - currentNumPackets <= 100) {
-//            double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
-//            previousNumPackets = currentNumPackets;
-//            QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
-//            emit(queueLoadLevelSignal, this->getParentModule(), &details);
-//        }
         if (std::abs(currentNumPackets - previousNumPackets) >= getMaxNumPackets() * LOAD_SCALE) { // 在"普通状态下"的队列占用波动
             double queueOccupiedRatio = ((double)(currentNumPackets)) / (double)getMaxNumPackets();
             previousNumPackets = currentNumPackets;
-
-//            std::cout << "at " << simTime() << " " << this->getParentModule()->getFullPath() << std::endl;
-//            std::cout << getNumPackets() << " " << packetCapacity << " ratio:" << queueChangedOccupiedRatio << std::endl;
-//            std::cout << "----------------------------------------\n";
 
             QueueLoadChangeDetails details(this->getParentModule(), queueOccupiedRatio);
             emit(queueLoadLevelSignal, this->getParentModule(), &details);
@@ -338,6 +319,73 @@ void PacketQueue::checkAndEmitQueueLoadLevel(Packet *packet)
     }
 }
 
+/*
+ * @sqsq
+ * 计算该队列对应的chi并更新ospf中的chiArray
+ */
+void PacketQueue::calculateAndChangeOSPFChi()
+{
+    int currentNumPackets = getNumPackets();
+    inet::ospfv2::Ospfv2 *ospfModule = check_and_cast<inet::ospfv2::Ospfv2 *>(this->getParentModule()->getParentModule()->getSubmodule("ospf"));
+    ospfv2::Router *ospfRouter = ospfModule->getOspfRouter();
+    ospfv2::Ospfv2Area *ospfArea = ospfRouter->getAreaByID(Ipv4Address(0, 0, 0, 0));
+    Ipv4Address routerID = ospfRouter->getRouterID();
+    NetworkInterface *currentInterface = check_and_cast<NetworkInterface *>(this->getParentModule());
+    double totalPropagationDelay = 0.0;
+    double maxPropagationDelay = 0.0;
+    std::vector<int> interfaceIndices = ospfArea->getInterfaceIndices();
+
+    for (int index : interfaceIndices) {
+        ospfv2::Ospfv2Interface *associatedInterface = ospfArea->getInterface(index);
+        std::string associatedInterfaceName = associatedInterface->getInterfaceName();
+        std::string currentInterfaceName = currentInterface->getInterfaceName();
+        if (associatedInterface->getState() ==
+                ospfv2::Ospfv2Interface::Ospfv2InterfaceStateType::POINTTOPOINT_STATE
+            &&
+                associatedInterfaceName != currentInterfaceName) { // 找到该路由器在工作状态下的其它接口
+            int direction = associatedInterfaceName[associatedInterfaceName.length() - 1] - '0';
+            if (direction == 0 || direction == 1) {
+                maxPropagationDelay = std::max(maxPropagationDelay, ospfv2::propagationDelayByID.find(0)->second);
+                totalPropagationDelay += ospfv2::propagationDelayByID.find(0)->second;
+            }
+            else {
+                maxPropagationDelay = std::max(maxPropagationDelay, ospfv2::propagationDelayByID.find(2)->second);
+                totalPropagationDelay += ospfv2::propagationDelayByID.find(routerID.getDByte(2))->second;
+            }
+        }
+    }
+
+    double delta = ospfModule->getDelta();
+    if (I - O != 0) {
+        double elapsingTime = (double)(getMaxNumPackets() - getNumPackets())
+                / (double)(I - O);
+        double p = std::min(1.0, (delta + maxPropagationDelay) / elapsingTime);
+        double beta = 1.0 - p, alpha = beta / 2;
+        double qtBSA = std::min(
+                (double)getMaxNumPackets() * beta + totalPropagationDelay * (I - O),
+                (double)getMaxNumPackets());
+        double theta = 10 * totalPropagationDelay;
+        double INew = (qtBSA - getMaxNumPackets() * alpha) / theta + O;
+        double chi;
+        if ((double)getNumPackets() >= (double)getMaxNumPackets() * beta) {
+            chi = std::min(std::max(0.0, INew / I), 1.0);
+        }
+        else {
+            chi = 0.0;
+        }
+
+        const NetworkInterface *ie = check_and_cast<const NetworkInterface *>(this->getParentModule());
+        std::string interfaceName = ie->getInterfaceName();
+        int direction = interfaceName[interfaceName.length() - 1] - '0';
+        ospfModule->getChiArray()[direction] = chi;
+//        std::cout << "at " << simTime() << " " << this->getFullPath() <<
+//                " changes chi to " << chi << " Inew:" << INew << " I:" << I << std::endl;
+//            ELBDetails details(this->getParentModule(), chi);
+//            emit(ELBChiSignal, this->getParentModule(), &details);
+    }
+    I = 0;
+    O = 0;
+}
 } // namespace queueing
 } // namespace inet
 

@@ -18,6 +18,9 @@ enum OspfPacketType
     LINKSTATE_REQUEST_PACKET = 3;
     LINKSTATE_UPDATE_PACKET = 4;
     LINKSTATE_ACKNOWLEDGEMENT_PACKET = 5;
+    
+    // @sqsq
+    ELB_PACKET = 6;
 }
 
 //

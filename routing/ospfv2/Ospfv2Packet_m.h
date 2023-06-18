@@ -50,6 +50,7 @@ struct Ospfv2LsaRequest;
 class Ospfv2LinkStateRequestPacket;
 class Ospfv2LinkStateUpdatePacket;
 class Ospfv2LinkStateAcknowledgementPacket;
+class ELBPacket;
 
 }  // namespace ospfv2
 }  // namespace inet
@@ -86,6 +87,11 @@ using namespace ospf;
  *     NEIGHBOR_UPDATE_RETRANSMISSION_TIMER = 7;
  *     NEIGHBOR_REQUEST_RETRANSMISSION_TIMER = 8;
  *     DATABASE_AGE_TIMER = 9;
+ * 
+ *     //
+ *     // \@sqsq
+ *     //
+ *     ELB_TIMER = 10;
  * }
  * </pre>
  */
@@ -98,14 +104,15 @@ enum Ospfv2TimerType {
     NEIGHBOR_DD_RETRANSMISSION_TIMER = 6,
     NEIGHBOR_UPDATE_RETRANSMISSION_TIMER = 7,
     NEIGHBOR_REQUEST_RETRANSMISSION_TIMER = 8,
-    DATABASE_AGE_TIMER = 9
+    DATABASE_AGE_TIMER = 9,
+    ELB_TIMER = 10
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2TimerType& e) { b->pack(static_cast<int>(e)); }
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2TimerType& e) { int n; b->unpack(n); e = static_cast<Ospfv2TimerType>(n); }
 
 /**
- * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:33 by opp_msgtool.
+ * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:38 by opp_msgtool.
  */
 struct INET_API Ospfv2Options
 {
@@ -128,7 +135,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2Options& obj) {
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2Options& obj) { __doUnpacking(b, obj); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:49</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:54</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF packet header
@@ -176,7 +183,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2Packet& obj) {o
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2Packet& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:61</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:66</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Hello packet
@@ -267,7 +274,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2HelloPacket& ob
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2HelloPacket& obj) {obj.parsimUnpack(b);}
 
 /**
- * Enum generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:78</tt> by opp_msgtool.
+ * Enum generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:83</tt> by opp_msgtool.
  * <pre>
  * enum Ospfv2LsaType
  * {
@@ -291,7 +298,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LsaType& e) { b
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LsaType& e) { int n; b->unpack(n); e = static_cast<Ospfv2LsaType>(n); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:90</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:95</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF LSA header
@@ -374,7 +381,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LsaHeader& obj)
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LsaHeader& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:107</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:112</tt> by opp_msgtool.
  * <pre>
  * //
  * // common ancestor type for all LSAs
@@ -415,7 +422,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2Lsa& obj) {obj.
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2Lsa& obj) {obj.parsimUnpack(b);}
 
 /**
- * Enum generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:113</tt> by opp_msgtool.
+ * Enum generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:118</tt> by opp_msgtool.
  * <pre>
  * enum LinkType
  * {
@@ -437,7 +444,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const LinkType& e) { b->pac
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, LinkType& e) { int n; b->unpack(n); e = static_cast<LinkType>(n); }
 
 /**
- * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:122 by opp_msgtool.
+ * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:127 by opp_msgtool.
  */
 struct INET_API Ospfv2TosData
 {
@@ -454,7 +461,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2TosData& obj) {
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2TosData& obj) { __doUnpacking(b, obj); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:130</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:135</tt> by opp_msgtool.
  * <pre>
  * // Router LSA Link section (RFC 1583 Section A.4.2.)
  * class Ospfv2Link extends cObject
@@ -526,7 +533,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2Link& obj) {obj
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2Link& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:144</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:149</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Router LSA (RFC 1583 Section A.4.2.)
@@ -604,7 +611,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2RouterLsa& obj)
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2RouterLsa& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:159</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:164</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Network LSA
@@ -658,7 +665,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2NetworkLsa& obj
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2NetworkLsa& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:169</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:174</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Summary LSA
@@ -717,7 +724,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2SummaryLsa& obj
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2SummaryLsa& obj) {obj.parsimUnpack(b);}
 
 /**
- * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:177 by opp_msgtool.
+ * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:182 by opp_msgtool.
  */
 struct INET_API Ospfv2ExternalTosInfo
 {
@@ -737,7 +744,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2ExternalTosInfo
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2ExternalTosInfo& obj) { __doUnpacking(b, obj); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:191</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:196</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents the contents of an OSPF AS External LSA
@@ -791,7 +798,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2AsExternalLsaCo
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2AsExternalLsaContents& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:201</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:206</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF AS External LSA
@@ -832,7 +839,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2AsExternalLsa& 
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2AsExternalLsa& obj) {obj.parsimUnpack(b);}
 
 /**
- * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:208 by opp_msgtool.
+ * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:213 by opp_msgtool.
  */
 struct INET_API Ospfv2DdOptions
 {
@@ -851,7 +858,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2DdOptions& obj)
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2DdOptions& obj) { __doUnpacking(b, obj); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:220</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:225</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Database Description packet
@@ -920,7 +927,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2DatabaseDescrip
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2DatabaseDescriptionPacket& obj) {obj.parsimUnpack(b);}
 
 /**
- * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:229 by opp_msgtool.
+ * Struct generated from inet/routing/ospfv2/Ospfv2Packet.msg:234 by opp_msgtool.
  */
 struct INET_API Ospfv2LsaRequest
 {
@@ -938,7 +945,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LsaRequest& obj
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LsaRequest& obj) { __doUnpacking(b, obj); }
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:240</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:245</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Link State Request packet
@@ -985,7 +992,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LinkStateReques
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LinkStateRequestPacket& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:248</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:253</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Link State Update packet
@@ -1034,7 +1041,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LinkStateUpdate
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LinkStateUpdatePacket& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:256</tt> by opp_msgtool.
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:261</tt> by opp_msgtool.
  * <pre>
  * //
  * // Represents an OSPF Link State Acknowledgement packet
@@ -1080,6 +1087,46 @@ class INET_API Ospfv2LinkStateAcknowledgementPacket : public ::inet::ospfv2::Osp
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const Ospfv2LinkStateAcknowledgementPacket& obj) {obj.parsimPack(b);}
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Ospfv2LinkStateAcknowledgementPacket& obj) {obj.parsimUnpack(b);}
 
+/**
+ * Class generated from <tt>inet/routing/ospfv2/Ospfv2Packet.msg:269</tt> by opp_msgtool.
+ * <pre>
+ * //
+ * // \@sqsq
+ * //
+ * class ELBPacket extends Ospfv2Packet
+ * {
+ *     type = ELB_PACKET;
+ *     double chi;  //64 bits
+ * }
+ * </pre>
+ */
+class INET_API ELBPacket : public ::inet::ospfv2::Ospfv2Packet
+{
+  protected:
+    double chi = 0;
+
+  private:
+    void copy(const ELBPacket& other);
+
+  protected:
+    bool operator==(const ELBPacket&) = delete;
+
+  public:
+    ELBPacket();
+    ELBPacket(const ELBPacket& other);
+    virtual ~ELBPacket();
+    ELBPacket& operator=(const ELBPacket& other);
+    virtual ELBPacket *dup() const override {return new ELBPacket(*this);}
+    virtual void parsimPack(omnetpp::cCommBuffer *b) const override;
+    virtual void parsimUnpack(omnetpp::cCommBuffer *b) override;
+
+    virtual double getChi() const;
+    virtual void setChi(double chi);
+};
+
+inline void doParsimPacking(omnetpp::cCommBuffer *b, const ELBPacket& obj) {obj.parsimPack(b);}
+inline void doParsimUnpacking(omnetpp::cCommBuffer *b, ELBPacket& obj) {obj.parsimUnpack(b);}
+
 
 }  // namespace ospfv2
 }  // namespace inet
@@ -1111,6 +1158,7 @@ template<> inline inet::ospfv2::Ospfv2LsaRequest *fromAnyPtr(any_ptr ptr) { retu
 template<> inline inet::ospfv2::Ospfv2LinkStateRequestPacket *fromAnyPtr(any_ptr ptr) { return check_and_cast<inet::ospfv2::Ospfv2LinkStateRequestPacket*>(ptr.get<cObject>()); }
 template<> inline inet::ospfv2::Ospfv2LinkStateUpdatePacket *fromAnyPtr(any_ptr ptr) { return check_and_cast<inet::ospfv2::Ospfv2LinkStateUpdatePacket*>(ptr.get<cObject>()); }
 template<> inline inet::ospfv2::Ospfv2LinkStateAcknowledgementPacket *fromAnyPtr(any_ptr ptr) { return check_and_cast<inet::ospfv2::Ospfv2LinkStateAcknowledgementPacket*>(ptr.get<cObject>()); }
+template<> inline inet::ospfv2::ELBPacket *fromAnyPtr(any_ptr ptr) { return check_and_cast<inet::ospfv2::ELBPacket*>(ptr.get<cObject>()); }
 
 }  // namespace omnetpp
 
