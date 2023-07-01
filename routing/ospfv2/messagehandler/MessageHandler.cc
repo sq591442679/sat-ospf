@@ -85,6 +85,9 @@ MessageHandler::~MessageHandler()
     ofs << tot;
     ofs << std::endl;
     ofs.close();
+
+//    std::cout << "avg LSU size: " << (double)controlPacketSize[LINKSTATE_UPDATE_PACKET] / controlPacketCount[LINKSTATE_UPDATE_PACKET] << std::endl;
+//    std::cout << "LSU count: " << controlPacketCount[LINKSTATE_UPDATE_PACKET] << std::endl;
 }
 
 void MessageHandler::messageReceived(cMessage *message)
@@ -388,6 +391,9 @@ void MessageHandler::processPacket(Packet *pk, Ospfv2Interface *unused1, Neighbo
                             if (controlPacketCount.find(packetType) != controlPacketCount.end()) {
                                 controlPacketCount[packetType]++;
                                 controlPacketSize[packetType] += packet->getPacketLengthField();
+//                                if (packetType == LINKSTATE_UPDATE_PACKET) {
+//                                    std::cout << "LSU, packet size=" << packet->getPacketLengthField() << std::endl;
+//                                }
                             }
                         }
 

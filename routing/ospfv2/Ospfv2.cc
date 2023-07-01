@@ -57,6 +57,9 @@ Ospfv2::~Ospfv2()
      * @sqsq
      */
 //    std::cout << this->getParentModule()->getFullName() << ": " << dropPacketCnt << std::endl;
+    if (ELB) {
+        cancelAndDelete(ELBTimer);
+    }
 }
 
 void Ospfv2::initialize(int stage)
@@ -75,7 +78,9 @@ void Ospfv2::initialize(int stage)
         /*
          * @sqsq
          */
-        ospfRouter->getMessageHandler()->startTimer(ELBTimer, delta);
+        if (ELB) {
+            ospfRouter->getMessageHandler()->startTimer(ELBTimer, delta);
+        }
     }
 }
 

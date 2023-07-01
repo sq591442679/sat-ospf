@@ -334,7 +334,7 @@ unsigned int CsmaCaMacHeaderDescriptor::getFieldTypeFlags(int field) const
         field -= base->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        0,    // FIELD_type
+        FD_ISEDITABLE,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_headerLengthField
         0,    // FIELD_transmitterAddress
         0,    // FIELD_receiverAddress
@@ -494,6 +494,7 @@ void CsmaCaMacHeaderDescriptor::setFieldValueAsString(omnetpp::any_ptr object, i
     }
     CsmaCaMacHeader *pp = omnetpp::fromAnyPtr<CsmaCaMacHeader>(object); (void)pp;
     switch (field) {
+        case FIELD_type: pp->setType((inet::CsmaCaMacHeaderType)string2enum(value, "inet::CsmaCaMacHeaderType")); break;
         case FIELD_headerLengthField: pp->setHeaderLengthField(string2ulong(value)); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'CsmaCaMacHeader'", field);
     }
@@ -529,6 +530,7 @@ void CsmaCaMacHeaderDescriptor::setFieldValue(omnetpp::any_ptr object, int field
     }
     CsmaCaMacHeader *pp = omnetpp::fromAnyPtr<CsmaCaMacHeader>(object); (void)pp;
     switch (field) {
+        case FIELD_type: pp->setType(static_cast<inet::CsmaCaMacHeaderType>(value.intValue())); break;
         case FIELD_headerLengthField: pp->setHeaderLengthField(omnetpp::checked_int_cast<uint8_t>(value.intValue())); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'CsmaCaMacHeader'", field);
     }
