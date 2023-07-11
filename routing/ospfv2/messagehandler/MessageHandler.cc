@@ -25,6 +25,7 @@
 #include "inet/routing/ospfv2/Ospfv2.h"
 #include "inet/queueing/queue/PacketQueue.h"
 #include "inet/routing/ospfv2/Ospfv2Crc.h"
+#include "inet/routing/ospfv2/router/Ospfv2Common.h"
 
 namespace inet {
 
@@ -387,7 +388,7 @@ void MessageHandler::processPacket(Packet *pk, Ospfv2Interface *unused1, Neighbo
                         /*
                          * @sqsq
                          */
-                        if (simTime() > getSimulation()->getWarmupPeriod()) {
+                        if (simTime() > getSimulation()->getWarmupPeriod() && simTime() < RECORD_END_TIME) {
                             if (controlPacketCount.find(packetType) != controlPacketCount.end()) {
                                 controlPacketCount[packetType]++;
                                 controlPacketSize[packetType] += packet->getPacketLengthField();

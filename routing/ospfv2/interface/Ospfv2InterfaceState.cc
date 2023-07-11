@@ -15,6 +15,11 @@
 #include "inet/routing/ospfv2/router/Ospfv2Area.h"
 #include "inet/routing/ospfv2/router/Ospfv2Router.h"
 
+/*
+ * @sqsq
+ */
+#include "inet/routing/ospfv2/router/Ospfv2Common.h"
+
 namespace inet {
 
 namespace ospfv2 {
@@ -26,7 +31,58 @@ void Ospfv2InterfaceState::changeState(Ospfv2Interface *intf, Ospfv2InterfaceSta
     Ospfv2Interface::Ospfv2InterfaceType intfType = intf->getType();
     bool shouldRebuildRoutingTable = false;
 
+    /*
+     * @sqsq
+     */
+    Ospfv2Area *parentArea = intf->getArea();
+    bool isOldInContinuousFailure = false, isNewInContinuousFailure = false;
+    int ttl = -1;
+    for (int i = 0; i < parentArea->getInterfaceCount(); ++i) {
+        Ospfv2Interface::Ospfv2InterfaceStateType state1, state2;
+        if (i < parentArea->getInterfaceCount() - 1) {
+            state1 = parentArea->getAssociatedInterface(i)->getState();
+            state2 = parentArea->getAssociatedInterface(i + 1)->getState();
+        }
+        else {
+            state1 = parentArea->getAssociatedInterface(i)->getState();
+            state2 = parentArea->getAssociatedInterface(0)->getState();
+        }
+        if (state1 != Ospfv2Interface::POINTTOPOINT_STATE && state2 != Ospfv2Interface::POINTTOPOINT_STATE) {
+            isOldInContinuousFailure = true;
+        }
+    }
+
+
     intf->changeState(newState, currentState);
+
+
+    /*
+     * @sqsq
+     * 假设是这样的，如果一颗卫星的“相邻”两个接口，i.e. 0&1  or  1&2  or  2&3  or  3&1断开
+     * 这样一个状态可能会引发循环
+     * 所以一颗卫星进入/离开这种状态时需要全网洪泛
+     * 先试试效果
+     */
+    for (int i = 0; i < parentArea->getInterfaceCount(); ++i) {
+        Ospfv2Interface::Ospfv2InterfaceStateType state1, state2;
+        if (i < parentArea->getInterfaceCount() - 1) {
+            state1 = parentArea->getAssociatedInterface(i)->getState();
+            state2 = parentArea->getAssociatedInterface(i + 1)->getState();
+        }
+        else {
+            state1 = parentArea->getAssociatedInterface(i)->getState();
+            state2 = parentArea->getAssociatedInterface(0)->getState();
+        }
+        if (state1 != Ospfv2Interface::POINTTOPOINT_STATE && state2 != Ospfv2Interface::POINTTOPOINT_STATE) {
+            isNewInContinuousFailure = true;
+        }
+    }
+
+    if (sqsqCheckSimTime() && LOOP_AVOIDANCE &&
+            (isOldInContinuousFailure || isNewInContinuousFailure)) {
+        ttl = 15;
+    }
+
 
     if ((oldState == Ospfv2Interface::DOWN_STATE) ||
         (nextState == Ospfv2Interface::DOWN_STATE) ||
@@ -48,7 +104,7 @@ void Ospfv2InterfaceState::changeState(Ospfv2Interface *intf, Ospfv2InterfaceSta
             long sequenceNumber = routerLSA->getHeader().getLsSequenceNumber();
             if (sequenceNumber == MAX_SEQUENCE_NUMBER) {
                 routerLSA->getHeaderForUpdate().setLsAge(MAX_AGE);
-                intf->getArea()->floodLSA(routerLSA);
+                intf->getArea()->floodLSA(routerLSA, ttl);
                 routerLSA->incrementInstallTime();
             }
             else {
@@ -58,7 +114,7 @@ void Ospfv2InterfaceState::changeState(Ospfv2Interface *intf, Ospfv2InterfaceSta
                 shouldRebuildRoutingTable |= routerLSA->update(newLSA);
                 delete newLSA;
 
-                intf->getArea()->floodLSA(routerLSA);
+                intf->getArea()->floodLSA(routerLSA, ttl);
             }
         }
         else { // (lsa == nullptr) -> This must be the first time any interface is up...
@@ -69,7 +125,7 @@ void Ospfv2InterfaceState::changeState(Ospfv2Interface *intf, Ospfv2InterfaceSta
             routerLSA = intf->getArea()->findRouterLSA(intf->getArea()->getRouter()->getRouterID());
 
             intf->getArea()->setSPFTreeRoot(routerLSA);
-            intf->getArea()->floodLSA(newLSA);
+            intf->getArea()->floodLSA(newLSA, ttl);
             delete newLSA;
         }
     }

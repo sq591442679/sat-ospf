@@ -47,7 +47,7 @@ module LinkLayerNodeBase extends NodeBase like IEthernetNetworkNode
         @figure[interfaceLayer.title](type=text; pos=1245,763; anchor=ne; text="interface layer");
     gates:
         input radioIn[numWlanInterfaces] @directIn;
-        inout pppg[numPppInterfaces] @labels(PppFrame-conn) @allowUnconnected;
+        inout pppg[numPppInterfaces] @labels(PppFrame-conn) @allowUnconnected @loose; 
         inout ethg[numEthInterfaces] @labels(EtherFrame-conn) @allowUnconnected @loose;
     submodules:
         pcapRecorder[numPcapRecorders]: PcapRecorder {

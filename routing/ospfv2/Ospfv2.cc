@@ -34,7 +34,7 @@ namespace ospfv2 {
 /*
  * @sqsq
  */
-double Ospfv2::delta = 0.001;
+double Ospfv2::delta = 0.01;
 
 Define_Module(Ospfv2);
 

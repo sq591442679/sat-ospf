@@ -283,22 +283,186 @@ Ospfv2Interface *Ospfv2Area::findVirtualLink(RouterId routerID)
 
 bool Ospfv2Area::installRouterLSA(const Ospfv2RouterLsa *lsa)
 {
+//    LinkStateId linkStateID = lsa->getHeader().getLinkStateID();
+//    auto lsaIt = routerLSAsByID.find(linkStateID);
+//    if (lsaIt != routerLSAsByID.end()) {
+//        LsaKeyType lsaKey;
+//
+//        lsaKey.linkStateID = lsa->getHeader().getLinkStateID();
+//        lsaKey.advertisingRouter = lsa->getHeader().getAdvertisingRouter();
+//
+//        removeFromAllRetransmissionLists(lsaKey);
+//        return lsaIt->second->update(lsa);
+//    }
+//    else {
+//        RouterLsa *lsaCopy = new RouterLsa(*lsa);
+//        routerLSAsByID[linkStateID] = lsaCopy;
+//        routerLSAs.push_back(lsaCopy);
+//        return true;
+//    }
+
+    /*
+     * @sqsq
+     * 若收到了来自局部洪泛范围之外的LSA，如果其中有连续的接口故障则原样更新
+     * 如果其中没有连续的接口故障则使用一个新的完全正常的LSA更新本地的LSDB
+     * 生成LSA的过程见originateRouterLSA()
+     */
     LinkStateId linkStateID = lsa->getHeader().getLinkStateID();
-    auto lsaIt = routerLSAsByID.find(linkStateID);
-    if (lsaIt != routerLSAsByID.end()) {
-        LsaKeyType lsaKey;
+    RouterId currentRouterId = parentRouter->getRouterID();
 
-        lsaKey.linkStateID = lsa->getHeader().getLinkStateID();
-        lsaKey.advertisingRouter = lsa->getHeader().getAdvertisingRouter();
+    if (
+        !LOOP_AVOIDANCE ||
+        (LOOP_AVOIDANCE && sqsqCalculateManhattanDistance(linkStateID, currentRouterId) <= SQSQ_HOP)
+    ) {
+        auto lsaIt = routerLSAsByID.find(linkStateID);
+        if (lsaIt != routerLSAsByID.end()) {
+            LsaKeyType lsaKey;
 
-        removeFromAllRetransmissionLists(lsaKey);
-        return lsaIt->second->update(lsa);
+            lsaKey.linkStateID = lsa->getHeader().getLinkStateID();
+            lsaKey.advertisingRouter = lsa->getHeader().getAdvertisingRouter();
+
+            removeFromAllRetransmissionLists(lsaKey);
+            return lsaIt->second->update(lsa);
+        }
+        else {
+            RouterLsa *lsaCopy = new RouterLsa(*lsa);
+            routerLSAsByID[linkStateID] = lsaCopy;
+            routerLSAs.push_back(lsaCopy);
+            return true;
+        }
     }
     else {
-        RouterLsa *lsaCopy = new RouterLsa(*lsa);
-        routerLSAsByID[linkStateID] = lsaCopy;
-        routerLSAs.push_back(lsaCopy);
-        return true;
+        RouterLsa *lsaCopy = new RouterLsa(*lsa);  // 记得释放
+        int x = linkStateID.getDByte(2), y = linkStateID.getDByte(3);
+        RouterId neighboringRouterIDs[] = {
+            RouterId(0, 0, sqsqRescaleN(x - 1), y), // 上方卫星的id
+            RouterId(0, 0, sqsqRescaleN(x + 1), y),
+            RouterId(0, 0, x, sqsqRescaleM(y - 1)),
+            RouterId(0, 0, x, sqsqRescaleM(y + 1))
+        };
+
+        for (RouterId neighboringRouterID : neighboringRouterIDs) {
+            // 对于每个neihboringRouterId, 在lsaCopy中找其是否存在 若不存在则添加一条对应的POINTTOPOINT_LINK
+            // linkId: 邻居卫星的router id
+            // link data: 该卫星(通告lsa的卫星)与邻居卫星相连的接口的ip addr
+            bool flag = false;
+            int linksArraySize = lsaCopy->getLinksArraySize();
+            int direction = getDirection(linkStateID, neighboringRouterID);
+            for (int i = 0; i < linksArraySize; ++i) {
+                Ospfv2Link link = lsaCopy->getLinks(i);
+                if (link.getType() == POINTTOPOINT_LINK && link.getLinkID() == neighboringRouterID) {
+                    // 如果在原始通告的内容里就有该链路的信息
+                    // 也要将该链路的cost设置为只有传播时延
+                    if (direction == 0 || direction == 1) {
+                        link.setLinkCost(propagationDelayByID.find(0)->second);
+                    }
+                    else {
+                        link.setLinkCost(propagationDelayByID.find(linkStateID.getDByte(2))->second);
+                    }
+                    lsaCopy->setLinks(i, link);
+                    flag = true;
+                }
+            }
+            if (flag == false) {
+                // 在该LSA中没有携带该链路的信息，即该链路是中断的，那么需要在更新LSDB时把该链路状态设为连通的
+                // 即在装入LSDB时新增一条link的信息
+                Ospfv2Link newLink;
+                newLink.setType(POINTTOPOINT_LINK);
+                newLink.setLinkID(Ipv4Address(neighboringRouterID));
+                newLink.setLinkData(InterfaceAddressesByRouterID.find(linkStateID)->second[direction].getInt());
+                if (direction == 0 || direction == 1) {
+                    newLink.setLinkCost(propagationDelayByID.find(0)->second);
+                }
+                else {
+                    newLink.setLinkCost(propagationDelayByID.find(linkStateID.getDByte(2))->second);
+                }
+                newLink.setNumberOfTOS(0);
+                newLink.setTosDataArraySize(0);
+
+                unsigned short linkIndex = lsaCopy->getLinksArraySize();
+                lsaCopy->setLinksArraySize(linkIndex + 1);
+                lsaCopy->setNumberOfLinks(linkIndex + 1);
+                lsaCopy->setLinks(linkIndex, newLink);
+            }
+        }
+
+
+        for (Ipv4Address interfaceAddr : InterfaceAddressesByRouterID.find(linkStateID)->second) {
+            // 对于每个interfaceAddr, 在lsaCopy中找其是否存在 若不存在则添加一条对应的STUB_LINK
+            // linkId: 该卫星(通告lsa的卫星)的接口的ip地址
+            // link data: 该卫星与邻居卫星相连的接口的ip addr
+            bool flag = false;
+            int linksArraySize = lsaCopy->getLinksArraySize();
+            Ipv4Address neighboringInterfaceAddr = Ipv4Address(
+                interfaceAddr.getDByte(0),
+                interfaceAddr.getDByte(1),
+                interfaceAddr.getDByte(2),
+                interfaceAddr.getDByte(3) == 1 ? 2 : 1
+            );
+            std::cout << interfaceAddr << " " << neighboringInterfaceAddr << std::endl;
+            std::cout << linkStateID << " " << routerIDByInterfaceAddress.find(neighboringInterfaceAddr)->second << std::endl;
+            int direction = getDirection(linkStateID, routerIDByInterfaceAddress.find(neighboringInterfaceAddr)->second);
+            for (int i = 0; i < linksArraySize; ++i) {
+                Ospfv2Link link = lsaCopy->getLinks(i);
+                if (link.getType() == STUB_LINK && link.getLinkID() == interfaceAddr) {
+                    // 如果在原始通告的内容里就有该链路的信息
+                    // 也要将该链路的cost设置为只有传播时延
+                    if (direction == 0 || direction == 1) {
+                        link.setLinkCost(propagationDelayByID.find(0)->second);
+                    }
+                    else {
+                        link.setLinkCost(propagationDelayByID.find(linkStateID.getDByte(2))->second);
+                    }
+                    lsaCopy->setLinks(i, link);
+                    flag = true;
+                }
+            }
+            if (flag == false) {
+                // 在该LSA中没有携带该链路的信息，即该链路是中断的，那么需要在更新LSDB时把该链路状态设为连通的
+                // 即在装入LSDB时新增一条link的信息
+                Ospfv2Link newLink;
+                newLink.setType(STUB_LINK);
+                newLink.setLinkID(interfaceAddr);
+                newLink.setLinkData(0xFFFFFFFF);
+                if (direction == 0 || direction == 1) {
+                    newLink.setLinkCost(propagationDelayByID.find(0)->second);
+                }
+                else {
+                    newLink.setLinkCost(propagationDelayByID.find(linkStateID.getDByte(2))->second);
+                }
+                newLink.setNumberOfTOS(0);
+                newLink.setTosDataArraySize(0);
+
+                unsigned short linkIndex = lsaCopy->getLinksArraySize();
+                lsaCopy->setLinksArraySize(linkIndex + 1);
+                lsaCopy->setNumberOfLinks(linkIndex + 1);
+                lsaCopy->setLinks(linkIndex, newLink);
+            }
+        }
+
+        // 于是现在得到了一个最终装入本卫星LSDB的、经过假设所有链路均正常的LSA
+        // 接下来将其装入LSDB
+        auto lsaIt = routerLSAsByID.find(linkStateID);
+        if (lsaIt != routerLSAsByID.end()) {
+            LsaKeyType lsaKey;
+
+            lsaKey.linkStateID = lsaCopy->getHeader().getLinkStateID();
+            lsaKey.advertisingRouter = lsaCopy->getHeader().getAdvertisingRouter();
+
+            removeFromAllRetransmissionLists(lsaKey);
+            bool ret = lsaIt->second->update(lsaCopy);
+
+            delete lsaCopy;
+            return ret;
+        }
+        else {
+            RouterLsa *newLsaCopy = new RouterLsa(*lsaCopy);
+            routerLSAsByID[linkStateID] = newLsaCopy;
+            routerLSAs.push_back(newLsaCopy);
+
+            delete lsaCopy;
+            return true;
+        }
     }
 }
 
@@ -1922,32 +2086,6 @@ void Ospfv2Area::sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterL
 
 /*
  * @sqsq
- * 计算从from到to的方向
- */
-int Ospfv2Area::getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID)
-{
-    int fromX = fromRouterID.getDByte(2), fromY = fromRouterID.getDByte(3);
-    int toX = toRouterID.getDByte(2), toY = toRouterID.getDByte(3);
-    // x: 1, ..., SQSQ_N     y: 1, ..., SQSQ_M
-
-    if (fromY == toY && toX == sqsqRescaleN(fromX - 1)) {
-        return 0;
-    }
-    if (fromY == toY && toX == sqsqRescaleN(fromX + 1)) {
-        return 1;
-    }
-    if (fromX == toX && toY == sqsqRescaleM(fromY - 1)) {
-        return 2;
-    }
-    if (fromX == toX && toY == sqsqRescaleM(fromY + 1)) {
-        return 3;
-    }
-
-    throw omnetpp::cRuntimeError("can't calculate direction between non-neighboring satellites");
-}
-
-/*
- * @sqsq
  */
 void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable)
 {
@@ -1956,13 +2094,13 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
      * router id: (0, 0, intra-orbit id, orbit id)
      * M: orbit number
      */
-//    if (simTime() >= 25.0 && simTime() <= 27.0) {
-//        if (parentRouter->getRouterID() == Ipv4Address(0, 0, 4, 1)) {
-//            std::cout << simTime() << "： " << parentRouter->getRouterID() << endl;
-//            sqsqPrintLSDB();
-//            std::cout << "--------------------------" << endl;
-//        }
-//    }
+    if (simTime() >= 100.0 && simTime() <= 106.0) {
+        if (parentRouter->getRouterID() == Ipv4Address(0, 0, 7, 5)) {
+            std::cout << simTime() << "： " << parentRouter->getRouterID() << endl;
+            sqsqPrintLSDB();
+            std::cout << "--------------------------" << endl;
+        }
+    }
 
     RouterId currentRouterID = parentRouter->getRouterID();
     RouterLsa *currentRouterLsa = findRouterLSA(currentRouterID);
@@ -2033,73 +2171,6 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
             }
         }
     }
-
-    /*
-    RouterId upID = Ipv4Address(0, 0, sqsqRescaleN(currentRouterID.getDByte(2) - 1), currentRouterID.getDByte(3));
-    RouterId downID = Ipv4Address(0, 0, sqsqRescaleN(currentRouterID.getDByte(2) + 1), currentRouterID.getDByte(3));
-    RouterId leftID = Ipv4Address(0, 0, currentRouterID.getDByte(2), sqsqRescaleM(currentRouterID.getDByte(3) - 1));
-    RouterId rightID = Ipv4Address(0, 0, currentRouterID.getDByte(2), sqsqRescaleM(currentRouterID.getDByte(3) + 1));
-    RouterId routerIDs[] = {currentRouterID, upID, downID, leftID, rightID};
-
-    unsigned int linkCount = currentRouterLsa->getLinksArraySize();
-    for (uint32_t i = 0; i < linkCount; i++) {
-        const auto& link = currentRouterLsa->getLinks(i); // @sqsq: link就是遍历的与每一个相邻节点的链接
-        LinkType linkType = static_cast<LinkType>(link.getType());
-        Ospfv2Lsa *neighboringVertex;
-
-        if (linkType == TRANSIT_LINK) {
-            neighboringVertex = findNetworkLSA(link.getLinkID());
-            if (neighboringVertex != nullptr){
-                NetworkLsa *joiningNetworkVertex = check_and_cast<NetworkLsa *>(neighboringVertex);
-                Ipv4Address connectingNetworkAddr = joiningNetworkVertex->getHeader().getLinkStateID().doAnd(joiningNetworkVertex->getNetworkMask());
-                unsigned long linkCost = link.getLinkCost();
-
-                Ipv4Address interfaceAddr1 = Ipv4Address(connectingNetworkAddr.getDByte(0), connectingNetworkAddr.getDByte(1), connectingNetworkAddr.getDByte(2), 1);
-                Ipv4Address interfaceAddr2 = Ipv4Address(connectingNetworkAddr.getDByte(0), connectingNetworkAddr.getDByte(1), connectingNetworkAddr.getDByte(2), 2);
-                Ospfv2Interface *interface1 = getInterface(interfaceAddr1);
-                Ospfv2Interface *interface2 = getInterface(interfaceAddr2);
-
-                int interfaceIndex;
-                Ipv4Address nextHopAddr;
-                std::string interfaceName;
-                interfaceName.clear();
-                if (interface1 != nullptr) { // this router has an interface whose IP is interfaceAddr1, then its neighbor's IP is interfaceAddr2
-                    interfaceName = interface1->getInterfaceName(); // name must be "eth0"/"eth1"/"eth2"/"eth3"
-                    interfaceIndex = interface1->getIfIndex();
-                    nextHopAddr = interfaceAddr2;
-                }
-                else if (interface2 != nullptr) {
-                    interfaceName = interface2->getInterfaceName(); // name must be "eth0"/"eth1"/"eth2"/"eth3"
-                    interfaceIndex = interface2->getIfIndex();
-                    nextHopAddr = interfaceAddr1;
-                }
-                else {
-                    // this may happen when the link between current satellite and its neighbor is actually disconnected
-                    // but from my point of view, if the link is disconnected, there shouldn't be such a networoLSA?
-
-                }
-                if (!interfaceName.empty()) {
-                    int direction = interfaceName[3] - '0';
-                    selectedDirections.push_back(direction);
-                    NextHop nextHop;
-                    nextHop.advertisingRouter = currentRouterID; // is this true?
-                    nextHop.hopAddress = nextHopAddr;
-                    nextHop.ifIndex = interfaceIndex;
-                    for (Ospfv2RoutingTableEntry *entry : routingTables[direction]) {
-                        entry->clearNextHops();
-                        entry->addNextHop(nextHop);
-
-                        Ipv4Address destNetworkAddress = entry->getDestination().doAnd(entry->getNetmask());
-                        std::pair<Ipv4Address, Ipv4Address> routersInNetwork = routerIDsByNetwork.find(destNetworkAddress)->second;
-                        if (routersInNetwork.first != parentRouter->getRouterID() && routersInNetwork.second != parentRouter->getRouterID()) {
-                            entry->setCost(entry->getCost() + linkCost);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
 
     if (selectedDirections.size() > 0) {
         std::sort(selectedDirections.begin(), selectedDirections.end());
@@ -2917,6 +2988,7 @@ void Ospfv2Area::sqsqPrintLSDB()
         std::cout << endl;
     }
 }
+
 
 } // namespace ospfv2
 

@@ -45,8 +45,8 @@ namespace ospfv2 {
  * @sqsq
  */
 #define SQSQ_CONVERGENCY_TIME                  20.000000
-#define SQSQ_HOP                               14
-#define EXPERIMENT_NAME                        "withoutDD-withLoopPrevention-withoutLoadBalance"
+#define SQSQ_HOP                               0
+#define EXPERIMENT_NAME                        "withDD-withoutLoopPrevention-withoutLoadBalance"
 
 #define SQSQ_M                                 6    // num of orbits
 #define SQSQ_N                                 11   // num of satellites in one orbit
@@ -57,156 +57,24 @@ namespace ospfv2 {
 #define LOOP_AVOIDANCE                         true
 #define HOP_LOOP_PARAMETER                     10
 
-#define REQUEST_SHOULD_KNOWN_RANGE             false
+#define REQUEST_SHOULD_KNOWN_RANGE             true
 #define LSR_RANGE                              SQSQ_HOP
 
 #define LOAD_BALANCE                           false
 
 #define IS_OSPF                                false
 
-#define RECORD_CSV                             true
+#define RECORD_CSV                             false
 #define SEND_ICMP                              false
 
 #define LOAD_SCALE                             1.0
 
-#define PFC                                    false
+#define PFC                                    true
 #define ELB                                    false
 
-const std::map<Ipv4Address, std::pair<Ipv4Address, Ipv4Address> > routerIDsByNetwork = {
-        {Ipv4Address(192, 168, 1, 0), std::make_pair(Ipv4Address(0, 0, 1, 1), Ipv4Address(0, 0, 1, 2))},
-        {Ipv4Address(192, 168, 2, 0), std::make_pair(Ipv4Address(0, 0, 1, 1), Ipv4Address(0, 0, 2, 1))},
-        {Ipv4Address(192, 168, 3, 0), std::make_pair(Ipv4Address(0, 0, 1, 2), Ipv4Address(0, 0, 1, 3))},
-        {Ipv4Address(192, 168, 4, 0), std::make_pair(Ipv4Address(0, 0, 1, 2), Ipv4Address(0, 0, 2, 2))},
-        {Ipv4Address(192, 168, 5, 0), std::make_pair(Ipv4Address(0, 0, 1, 3), Ipv4Address(0, 0, 1, 4))},
-        {Ipv4Address(192, 168, 6, 0), std::make_pair(Ipv4Address(0, 0, 1, 3), Ipv4Address(0, 0, 2, 3))},
-        {Ipv4Address(192, 168, 7, 0), std::make_pair(Ipv4Address(0, 0, 1, 4), Ipv4Address(0, 0, 1, 5))},
-        {Ipv4Address(192, 168, 8, 0), std::make_pair(Ipv4Address(0, 0, 1, 4), Ipv4Address(0, 0, 2, 4))},
-        {Ipv4Address(192, 168, 9, 0), std::make_pair(Ipv4Address(0, 0, 1, 5), Ipv4Address(0, 0, 1, 6))},
-        {Ipv4Address(192, 168, 10, 0), std::make_pair(Ipv4Address(0, 0, 1, 5), Ipv4Address(0, 0, 2, 5))},
-        {Ipv4Address(192, 168, 11, 0), std::make_pair(Ipv4Address(0, 0, 1, 6), Ipv4Address(0, 0, 1, 1))},
-        {Ipv4Address(192, 168, 12, 0), std::make_pair(Ipv4Address(0, 0, 1, 6), Ipv4Address(0, 0, 2, 6))},
-        {Ipv4Address(192, 168, 13, 0), std::make_pair(Ipv4Address(0, 0, 2, 1), Ipv4Address(0, 0, 2, 2))},
-        {Ipv4Address(192, 168, 14, 0), std::make_pair(Ipv4Address(0, 0, 2, 1), Ipv4Address(0, 0, 3, 1))},
-        {Ipv4Address(192, 168, 15, 0), std::make_pair(Ipv4Address(0, 0, 2, 2), Ipv4Address(0, 0, 2, 3))},
-        {Ipv4Address(192, 168, 16, 0), std::make_pair(Ipv4Address(0, 0, 2, 2), Ipv4Address(0, 0, 3, 2))},
-        {Ipv4Address(192, 168, 17, 0), std::make_pair(Ipv4Address(0, 0, 2, 3), Ipv4Address(0, 0, 2, 4))},
-        {Ipv4Address(192, 168, 18, 0), std::make_pair(Ipv4Address(0, 0, 2, 3), Ipv4Address(0, 0, 3, 3))},
-        {Ipv4Address(192, 168, 19, 0), std::make_pair(Ipv4Address(0, 0, 2, 4), Ipv4Address(0, 0, 2, 5))},
-        {Ipv4Address(192, 168, 20, 0), std::make_pair(Ipv4Address(0, 0, 2, 4), Ipv4Address(0, 0, 3, 4))},
-        {Ipv4Address(192, 168, 21, 0), std::make_pair(Ipv4Address(0, 0, 2, 5), Ipv4Address(0, 0, 2, 6))},
-        {Ipv4Address(192, 168, 22, 0), std::make_pair(Ipv4Address(0, 0, 2, 5), Ipv4Address(0, 0, 3, 5))},
-        {Ipv4Address(192, 168, 23, 0), std::make_pair(Ipv4Address(0, 0, 2, 6), Ipv4Address(0, 0, 2, 1))},
-        {Ipv4Address(192, 168, 24, 0), std::make_pair(Ipv4Address(0, 0, 2, 6), Ipv4Address(0, 0, 3, 6))},
-        {Ipv4Address(192, 168, 25, 0), std::make_pair(Ipv4Address(0, 0, 3, 1), Ipv4Address(0, 0, 3, 2))},
-        {Ipv4Address(192, 168, 26, 0), std::make_pair(Ipv4Address(0, 0, 3, 1), Ipv4Address(0, 0, 4, 1))},
-        {Ipv4Address(192, 168, 27, 0), std::make_pair(Ipv4Address(0, 0, 3, 2), Ipv4Address(0, 0, 3, 3))},
-        {Ipv4Address(192, 168, 28, 0), std::make_pair(Ipv4Address(0, 0, 3, 2), Ipv4Address(0, 0, 4, 2))},
-        {Ipv4Address(192, 168, 29, 0), std::make_pair(Ipv4Address(0, 0, 3, 3), Ipv4Address(0, 0, 3, 4))},
-        {Ipv4Address(192, 168, 30, 0), std::make_pair(Ipv4Address(0, 0, 3, 3), Ipv4Address(0, 0, 4, 3))},
-        {Ipv4Address(192, 168, 31, 0), std::make_pair(Ipv4Address(0, 0, 3, 4), Ipv4Address(0, 0, 3, 5))},
-        {Ipv4Address(192, 168, 32, 0), std::make_pair(Ipv4Address(0, 0, 3, 4), Ipv4Address(0, 0, 4, 4))},
-        {Ipv4Address(192, 168, 33, 0), std::make_pair(Ipv4Address(0, 0, 3, 5), Ipv4Address(0, 0, 3, 6))},
-        {Ipv4Address(192, 168, 34, 0), std::make_pair(Ipv4Address(0, 0, 3, 5), Ipv4Address(0, 0, 4, 5))},
-        {Ipv4Address(192, 168, 35, 0), std::make_pair(Ipv4Address(0, 0, 3, 6), Ipv4Address(0, 0, 3, 1))},
-        {Ipv4Address(192, 168, 36, 0), std::make_pair(Ipv4Address(0, 0, 3, 6), Ipv4Address(0, 0, 4, 6))},
-        {Ipv4Address(192, 168, 37, 0), std::make_pair(Ipv4Address(0, 0, 4, 1), Ipv4Address(0, 0, 4, 2))},
-        {Ipv4Address(192, 168, 38, 0), std::make_pair(Ipv4Address(0, 0, 4, 1), Ipv4Address(0, 0, 5, 1))},
-        {Ipv4Address(192, 168, 39, 0), std::make_pair(Ipv4Address(0, 0, 4, 2), Ipv4Address(0, 0, 4, 3))},
-        {Ipv4Address(192, 168, 40, 0), std::make_pair(Ipv4Address(0, 0, 4, 2), Ipv4Address(0, 0, 5, 2))},
-        {Ipv4Address(192, 168, 41, 0), std::make_pair(Ipv4Address(0, 0, 4, 3), Ipv4Address(0, 0, 4, 4))},
-        {Ipv4Address(192, 168, 42, 0), std::make_pair(Ipv4Address(0, 0, 4, 3), Ipv4Address(0, 0, 5, 3))},
-        {Ipv4Address(192, 168, 43, 0), std::make_pair(Ipv4Address(0, 0, 4, 4), Ipv4Address(0, 0, 4, 5))},
-        {Ipv4Address(192, 168, 44, 0), std::make_pair(Ipv4Address(0, 0, 4, 4), Ipv4Address(0, 0, 5, 4))},
-        {Ipv4Address(192, 168, 45, 0), std::make_pair(Ipv4Address(0, 0, 4, 5), Ipv4Address(0, 0, 4, 6))},
-        {Ipv4Address(192, 168, 46, 0), std::make_pair(Ipv4Address(0, 0, 4, 5), Ipv4Address(0, 0, 5, 5))},
-        {Ipv4Address(192, 168, 47, 0), std::make_pair(Ipv4Address(0, 0, 4, 6), Ipv4Address(0, 0, 4, 1))},
-        {Ipv4Address(192, 168, 48, 0), std::make_pair(Ipv4Address(0, 0, 4, 6), Ipv4Address(0, 0, 5, 6))},
-        {Ipv4Address(192, 168, 49, 0), std::make_pair(Ipv4Address(0, 0, 5, 1), Ipv4Address(0, 0, 5, 2))},
-        {Ipv4Address(192, 168, 50, 0), std::make_pair(Ipv4Address(0, 0, 5, 1), Ipv4Address(0, 0, 6, 1))},
-        {Ipv4Address(192, 168, 51, 0), std::make_pair(Ipv4Address(0, 0, 5, 2), Ipv4Address(0, 0, 5, 3))},
-        {Ipv4Address(192, 168, 52, 0), std::make_pair(Ipv4Address(0, 0, 5, 2), Ipv4Address(0, 0, 6, 2))},
-        {Ipv4Address(192, 168, 53, 0), std::make_pair(Ipv4Address(0, 0, 5, 3), Ipv4Address(0, 0, 5, 4))},
-        {Ipv4Address(192, 168, 54, 0), std::make_pair(Ipv4Address(0, 0, 5, 3), Ipv4Address(0, 0, 6, 3))},
-        {Ipv4Address(192, 168, 55, 0), std::make_pair(Ipv4Address(0, 0, 5, 4), Ipv4Address(0, 0, 5, 5))},
-        {Ipv4Address(192, 168, 56, 0), std::make_pair(Ipv4Address(0, 0, 5, 4), Ipv4Address(0, 0, 6, 4))},
-        {Ipv4Address(192, 168, 57, 0), std::make_pair(Ipv4Address(0, 0, 5, 5), Ipv4Address(0, 0, 5, 6))},
-        {Ipv4Address(192, 168, 58, 0), std::make_pair(Ipv4Address(0, 0, 5, 5), Ipv4Address(0, 0, 6, 5))},
-        {Ipv4Address(192, 168, 59, 0), std::make_pair(Ipv4Address(0, 0, 5, 6), Ipv4Address(0, 0, 5, 1))},
-        {Ipv4Address(192, 168, 60, 0), std::make_pair(Ipv4Address(0, 0, 5, 6), Ipv4Address(0, 0, 6, 6))},
-        {Ipv4Address(192, 168, 61, 0), std::make_pair(Ipv4Address(0, 0, 6, 1), Ipv4Address(0, 0, 6, 2))},
-        {Ipv4Address(192, 168, 62, 0), std::make_pair(Ipv4Address(0, 0, 6, 1), Ipv4Address(0, 0, 7, 1))},
-        {Ipv4Address(192, 168, 63, 0), std::make_pair(Ipv4Address(0, 0, 6, 2), Ipv4Address(0, 0, 6, 3))},
-        {Ipv4Address(192, 168, 64, 0), std::make_pair(Ipv4Address(0, 0, 6, 2), Ipv4Address(0, 0, 7, 2))},
-        {Ipv4Address(192, 168, 65, 0), std::make_pair(Ipv4Address(0, 0, 6, 3), Ipv4Address(0, 0, 6, 4))},
-        {Ipv4Address(192, 168, 66, 0), std::make_pair(Ipv4Address(0, 0, 6, 3), Ipv4Address(0, 0, 7, 3))},
-        {Ipv4Address(192, 168, 67, 0), std::make_pair(Ipv4Address(0, 0, 6, 4), Ipv4Address(0, 0, 6, 5))},
-        {Ipv4Address(192, 168, 68, 0), std::make_pair(Ipv4Address(0, 0, 6, 4), Ipv4Address(0, 0, 7, 4))},
-        {Ipv4Address(192, 168, 69, 0), std::make_pair(Ipv4Address(0, 0, 6, 5), Ipv4Address(0, 0, 6, 6))},
-        {Ipv4Address(192, 168, 70, 0), std::make_pair(Ipv4Address(0, 0, 6, 5), Ipv4Address(0, 0, 7, 5))},
-        {Ipv4Address(192, 168, 71, 0), std::make_pair(Ipv4Address(0, 0, 6, 6), Ipv4Address(0, 0, 6, 1))},
-        {Ipv4Address(192, 168, 72, 0), std::make_pair(Ipv4Address(0, 0, 6, 6), Ipv4Address(0, 0, 7, 6))},
-        {Ipv4Address(192, 168, 73, 0), std::make_pair(Ipv4Address(0, 0, 7, 1), Ipv4Address(0, 0, 7, 2))},
-        {Ipv4Address(192, 168, 74, 0), std::make_pair(Ipv4Address(0, 0, 7, 1), Ipv4Address(0, 0, 8, 1))},
-        {Ipv4Address(192, 168, 75, 0), std::make_pair(Ipv4Address(0, 0, 7, 2), Ipv4Address(0, 0, 7, 3))},
-        {Ipv4Address(192, 168, 76, 0), std::make_pair(Ipv4Address(0, 0, 7, 2), Ipv4Address(0, 0, 8, 2))},
-        {Ipv4Address(192, 168, 77, 0), std::make_pair(Ipv4Address(0, 0, 7, 3), Ipv4Address(0, 0, 7, 4))},
-        {Ipv4Address(192, 168, 78, 0), std::make_pair(Ipv4Address(0, 0, 7, 3), Ipv4Address(0, 0, 8, 3))},
-        {Ipv4Address(192, 168, 79, 0), std::make_pair(Ipv4Address(0, 0, 7, 4), Ipv4Address(0, 0, 7, 5))},
-        {Ipv4Address(192, 168, 80, 0), std::make_pair(Ipv4Address(0, 0, 7, 4), Ipv4Address(0, 0, 8, 4))},
-        {Ipv4Address(192, 168, 81, 0), std::make_pair(Ipv4Address(0, 0, 7, 5), Ipv4Address(0, 0, 7, 6))},
-        {Ipv4Address(192, 168, 82, 0), std::make_pair(Ipv4Address(0, 0, 7, 5), Ipv4Address(0, 0, 8, 5))},
-        {Ipv4Address(192, 168, 83, 0), std::make_pair(Ipv4Address(0, 0, 7, 6), Ipv4Address(0, 0, 7, 1))},
-        {Ipv4Address(192, 168, 84, 0), std::make_pair(Ipv4Address(0, 0, 7, 6), Ipv4Address(0, 0, 8, 6))},
-        {Ipv4Address(192, 168, 85, 0), std::make_pair(Ipv4Address(0, 0, 8, 1), Ipv4Address(0, 0, 8, 2))},
-        {Ipv4Address(192, 168, 86, 0), std::make_pair(Ipv4Address(0, 0, 8, 1), Ipv4Address(0, 0, 9, 1))},
-        {Ipv4Address(192, 168, 87, 0), std::make_pair(Ipv4Address(0, 0, 8, 2), Ipv4Address(0, 0, 8, 3))},
-        {Ipv4Address(192, 168, 88, 0), std::make_pair(Ipv4Address(0, 0, 8, 2), Ipv4Address(0, 0, 9, 2))},
-        {Ipv4Address(192, 168, 89, 0), std::make_pair(Ipv4Address(0, 0, 8, 3), Ipv4Address(0, 0, 8, 4))},
-        {Ipv4Address(192, 168, 90, 0), std::make_pair(Ipv4Address(0, 0, 8, 3), Ipv4Address(0, 0, 9, 3))},
-        {Ipv4Address(192, 168, 91, 0), std::make_pair(Ipv4Address(0, 0, 8, 4), Ipv4Address(0, 0, 8, 5))},
-        {Ipv4Address(192, 168, 92, 0), std::make_pair(Ipv4Address(0, 0, 8, 4), Ipv4Address(0, 0, 9, 4))},
-        {Ipv4Address(192, 168, 93, 0), std::make_pair(Ipv4Address(0, 0, 8, 5), Ipv4Address(0, 0, 8, 6))},
-        {Ipv4Address(192, 168, 94, 0), std::make_pair(Ipv4Address(0, 0, 8, 5), Ipv4Address(0, 0, 9, 5))},
-        {Ipv4Address(192, 168, 95, 0), std::make_pair(Ipv4Address(0, 0, 8, 6), Ipv4Address(0, 0, 8, 1))},
-        {Ipv4Address(192, 168, 96, 0), std::make_pair(Ipv4Address(0, 0, 8, 6), Ipv4Address(0, 0, 9, 6))},
-        {Ipv4Address(192, 168, 97, 0), std::make_pair(Ipv4Address(0, 0, 9, 1), Ipv4Address(0, 0, 9, 2))},
-        {Ipv4Address(192, 168, 98, 0), std::make_pair(Ipv4Address(0, 0, 9, 1), Ipv4Address(0, 0, 10, 1))},
-        {Ipv4Address(192, 168, 99, 0), std::make_pair(Ipv4Address(0, 0, 9, 2), Ipv4Address(0, 0, 9, 3))},
-        {Ipv4Address(192, 168, 100, 0), std::make_pair(Ipv4Address(0, 0, 9, 2), Ipv4Address(0, 0, 10, 2))},
-        {Ipv4Address(192, 168, 101, 0), std::make_pair(Ipv4Address(0, 0, 9, 3), Ipv4Address(0, 0, 9, 4))},
-        {Ipv4Address(192, 168, 102, 0), std::make_pair(Ipv4Address(0, 0, 9, 3), Ipv4Address(0, 0, 10, 3))},
-        {Ipv4Address(192, 168, 103, 0), std::make_pair(Ipv4Address(0, 0, 9, 4), Ipv4Address(0, 0, 9, 5))},
-        {Ipv4Address(192, 168, 104, 0), std::make_pair(Ipv4Address(0, 0, 9, 4), Ipv4Address(0, 0, 10, 4))},
-        {Ipv4Address(192, 168, 105, 0), std::make_pair(Ipv4Address(0, 0, 9, 5), Ipv4Address(0, 0, 9, 6))},
-        {Ipv4Address(192, 168, 106, 0), std::make_pair(Ipv4Address(0, 0, 9, 5), Ipv4Address(0, 0, 10, 5))},
-        {Ipv4Address(192, 168, 107, 0), std::make_pair(Ipv4Address(0, 0, 9, 6), Ipv4Address(0, 0, 9, 1))},
-        {Ipv4Address(192, 168, 108, 0), std::make_pair(Ipv4Address(0, 0, 9, 6), Ipv4Address(0, 0, 10, 6))},
-        {Ipv4Address(192, 168, 109, 0), std::make_pair(Ipv4Address(0, 0, 10, 1), Ipv4Address(0, 0, 10, 2))},
-        {Ipv4Address(192, 168, 110, 0), std::make_pair(Ipv4Address(0, 0, 10, 1), Ipv4Address(0, 0, 11, 1))},
-        {Ipv4Address(192, 168, 111, 0), std::make_pair(Ipv4Address(0, 0, 10, 2), Ipv4Address(0, 0, 10, 3))},
-        {Ipv4Address(192, 168, 112, 0), std::make_pair(Ipv4Address(0, 0, 10, 2), Ipv4Address(0, 0, 11, 2))},
-        {Ipv4Address(192, 168, 113, 0), std::make_pair(Ipv4Address(0, 0, 10, 3), Ipv4Address(0, 0, 10, 4))},
-        {Ipv4Address(192, 168, 114, 0), std::make_pair(Ipv4Address(0, 0, 10, 3), Ipv4Address(0, 0, 11, 3))},
-        {Ipv4Address(192, 168, 115, 0), std::make_pair(Ipv4Address(0, 0, 10, 4), Ipv4Address(0, 0, 10, 5))},
-        {Ipv4Address(192, 168, 116, 0), std::make_pair(Ipv4Address(0, 0, 10, 4), Ipv4Address(0, 0, 11, 4))},
-        {Ipv4Address(192, 168, 117, 0), std::make_pair(Ipv4Address(0, 0, 10, 5), Ipv4Address(0, 0, 10, 6))},
-        {Ipv4Address(192, 168, 118, 0), std::make_pair(Ipv4Address(0, 0, 10, 5), Ipv4Address(0, 0, 11, 5))},
-        {Ipv4Address(192, 168, 119, 0), std::make_pair(Ipv4Address(0, 0, 10, 6), Ipv4Address(0, 0, 10, 1))},
-        {Ipv4Address(192, 168, 120, 0), std::make_pair(Ipv4Address(0, 0, 10, 6), Ipv4Address(0, 0, 11, 6))},
-        {Ipv4Address(192, 168, 121, 0), std::make_pair(Ipv4Address(0, 0, 11, 1), Ipv4Address(0, 0, 11, 2))},
-        {Ipv4Address(192, 168, 122, 0), std::make_pair(Ipv4Address(0, 0, 11, 1), Ipv4Address(0, 0, 1, 1))},
-        {Ipv4Address(192, 168, 123, 0), std::make_pair(Ipv4Address(0, 0, 11, 2), Ipv4Address(0, 0, 11, 3))},
-        {Ipv4Address(192, 168, 124, 0), std::make_pair(Ipv4Address(0, 0, 11, 2), Ipv4Address(0, 0, 1, 2))},
-        {Ipv4Address(192, 168, 125, 0), std::make_pair(Ipv4Address(0, 0, 11, 3), Ipv4Address(0, 0, 11, 4))},
-        {Ipv4Address(192, 168, 126, 0), std::make_pair(Ipv4Address(0, 0, 11, 3), Ipv4Address(0, 0, 1, 3))},
-        {Ipv4Address(192, 168, 127, 0), std::make_pair(Ipv4Address(0, 0, 11, 4), Ipv4Address(0, 0, 11, 5))},
-        {Ipv4Address(192, 168, 128, 0), std::make_pair(Ipv4Address(0, 0, 11, 4), Ipv4Address(0, 0, 1, 4))},
-        {Ipv4Address(192, 168, 129, 0), std::make_pair(Ipv4Address(0, 0, 11, 5), Ipv4Address(0, 0, 11, 6))},
-        {Ipv4Address(192, 168, 130, 0), std::make_pair(Ipv4Address(0, 0, 11, 5), Ipv4Address(0, 0, 1, 5))},
-        {Ipv4Address(192, 168, 131, 0), std::make_pair(Ipv4Address(0, 0, 11, 6), Ipv4Address(0, 0, 11, 1))},
-        {Ipv4Address(192, 168, 132, 0), std::make_pair(Ipv4Address(0, 0, 11, 6), Ipv4Address(0, 0, 1, 6))}
-};
-const std::map<Ipv4Address, std::vector<Ipv4Address> > networksByRouterID = {
+#define RECORD_END_TIME                        120.0
+
+const std::map<Ipv4Address, std::vector<Ipv4Address> > InterfaceAddressesByRouterID = {
         {Ipv4Address(0, 0, 1, 1), {Ipv4Address(192, 168, 122, 1), Ipv4Address(192, 168, 2, 2), Ipv4Address(192, 168, 11, 1), Ipv4Address(192, 168, 1, 2)}},
         {Ipv4Address(0, 0, 1, 2), {Ipv4Address(192, 168, 124, 1), Ipv4Address(192, 168, 4, 2), Ipv4Address(192, 168, 1, 1), Ipv4Address(192, 168, 3, 2)}},
         {Ipv4Address(0, 0, 1, 3), {Ipv4Address(192, 168, 126, 1), Ipv4Address(192, 168, 6, 2), Ipv4Address(192, 168, 3, 1), Ipv4Address(192, 168, 5, 2)}},
@@ -274,7 +142,7 @@ const std::map<Ipv4Address, std::vector<Ipv4Address> > networksByRouterID = {
         {Ipv4Address(0, 0, 11, 5), {Ipv4Address(192, 168, 118, 1), Ipv4Address(192, 168, 130, 2), Ipv4Address(192, 168, 127, 1), Ipv4Address(192, 168, 129, 2)}},
         {Ipv4Address(0, 0, 11, 6), {Ipv4Address(192, 168, 120, 1), Ipv4Address(192, 168, 132, 2), Ipv4Address(192, 168, 129, 1), Ipv4Address(192, 168, 131, 2)}}
 };
-const std::map <Ipv4Address, Ipv4Address> routerIDByIPAddress = {
+const std::map <Ipv4Address, Ipv4Address> routerIDByInterfaceAddress = {
         {Ipv4Address(192, 168, 122, 2), Ipv4Address(0, 0, 1, 1)},
         {Ipv4Address(192, 168, 2, 1), Ipv4Address(0, 0, 1, 1)},
         {Ipv4Address(192, 168, 11, 2), Ipv4Address(0, 0, 1, 1)},

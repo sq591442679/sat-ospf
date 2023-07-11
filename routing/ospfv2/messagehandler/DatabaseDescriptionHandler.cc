@@ -232,19 +232,6 @@ bool DatabaseDescriptionHandler::processDDPacket(const Ospfv2DatabaseDescription
     //                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
                             }
                         }
-                        else if (currentHeader.getLsType() == NETWORKLSA_TYPE) {
-                            Ipv4Address networkAddress;
-                            networkAddress.set(linkStateID.getDByte(0), linkStateID.getDByte(1), linkStateID.getDByte(2), 0);
-                            Ipv4Address end1 = routerIDsByNetwork.find(networkAddress)->second.first;
-                            Ipv4Address end2 = routerIDsByNetwork.find(networkAddress)->second.second; // 2 router ids that link to this network
-                            int dis1 = sqsqCalculateManhattanDistance(currentRouterID, end1);
-                            int dis2 = sqsqCalculateManhattanDistance(currentRouterID, end2);
-                            dis = std::min(dis1, dis2);
-                            if (dis <= LSR_RANGE) {
-                                neighbor->addToRequestList(&currentHeader);
-    //                            std::cout << "at " << simTime() << ", " << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
-                            }
-                        }
     //                    std::cout << currentRouterID << ": " << linkStateID << " dis=" << dis << std::endl;
                     }
                 }

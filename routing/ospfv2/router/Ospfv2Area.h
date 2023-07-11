@@ -122,7 +122,7 @@ class INET_API Ospfv2Area : public cObject
      * @sqsq
      */
     void sqsqCalculateShortestPathTree(RouterLsa *calculateRoot, RouterLsa *treeRoot, std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);
-    int getDirection(Ipv4Address fromRouterID, Ipv4Address toRouterID);
+    Ospfv2Interface *getAssociatedInterface(int i) { return associatedInterfaces[i]; }
 
     void calculateInterAreaRoutes(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);
     void recheckSummaryLSAs(std::vector<Ospfv2RoutingTableEntry *>& newRoutingTable);
