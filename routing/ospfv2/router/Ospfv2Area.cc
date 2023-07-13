@@ -393,12 +393,7 @@ bool Ospfv2Area::installRouterLSA(const Ospfv2RouterLsa *lsa)
             // link data: 该卫星与邻居卫星相连的接口的ip addr
             bool flag = false;
             int linksArraySize = lsaCopy->getLinksArraySize();
-            Ipv4Address neighboringInterfaceAddr = Ipv4Address(
-                interfaceAddr.getDByte(0),
-                interfaceAddr.getDByte(1),
-                interfaceAddr.getDByte(2),
-                interfaceAddr.getDByte(3) == 1 ? 2 : 1
-            );
+            Ipv4Address neighboringInterfaceAddr = getNeighboringInterfaceAddr(interfaceAddr);
             std::cout << interfaceAddr << " " << neighboringInterfaceAddr << std::endl;
             std::cout << linkStateID << " " << routerIDByInterfaceAddress.find(neighboringInterfaceAddr)->second << std::endl;
             int direction = getDirection(linkStateID, routerIDByInterfaceAddress.find(neighboringInterfaceAddr)->second);
@@ -2133,20 +2128,8 @@ void Ospfv2Area::calculateShortestPathTree(std::vector<Ospfv2RoutingTableEntry *
 
             for (Ospfv2Interface *gatewayInterface : associatedInterfaces) {
                 if (gatewayInterface->getInterfaceName()[3] - '0' == direction) {
-                    Ipv4Address nextHopAddr;
                     Ipv4Address gatewayInterfaceIPAddress = gatewayInterface->getAddressRange().address;
-                    if (gatewayInterfaceIPAddress.getDByte(3) == 1) {
-                        nextHopAddr.set(gatewayInterfaceIPAddress.getDByte(0),
-                                gatewayInterfaceIPAddress.getDByte(1),
-                                gatewayInterfaceIPAddress.getDByte(2),
-                                2);
-                    }
-                    else {
-                        nextHopAddr.set(gatewayInterfaceIPAddress.getDByte(0),
-                                gatewayInterfaceIPAddress.getDByte(1),
-                                gatewayInterfaceIPAddress.getDByte(2),
-                                1);
-                    }
+                    Ipv4Address nextHopAddr = getNeighboringInterfaceAddr(gatewayInterfaceIPAddress);
 
                     NextHop nextHop;
                     nextHop.advertisingRouter = currentRouterID; // is this true?
